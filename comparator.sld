@@ -20,7 +20,7 @@
           hash-bound hash-salt
           =? <? >? <=? >=?
           comparator-if<=>
-          hash-lambda)
+          hash-lambda string-comparator)
 
   (import (scheme base)
           (scheme case-lambda)
@@ -82,4 +82,7 @@
         ((hash-lambda (x y) . body)
            (case-lambda
              ((x) (let ((y 0)) . body))
-             ((x y) . body)))))))
+             ((x y) . body)))))
+
+    (define string-comparator
+      (make-comparator string? string=? string<? string-hash))))

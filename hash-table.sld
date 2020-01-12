@@ -34,6 +34,11 @@
     hash-table-equivalence-function hash-table-hash-function)
 
   (cond-expand
+    (gauche
+      ; Gauche's alist->hash-table in (scheme hash-table) has a bug,
+      ; but the bug is not present in the built-in (gauche base) library.
+      (import (except (scheme hash-table) alist->hash-table)
+              (only (gauche base) alist->hash-table)))
     ((library (scheme hash-table)) (import (scheme hash-table)))
     ((library (srfi 125)) (import (srfi 125)))
     ((library (std srfi 125)) (import (std srfi 125)))
