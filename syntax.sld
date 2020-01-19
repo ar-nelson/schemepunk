@@ -95,7 +95,16 @@
            (let ((var subject))
              (cond
                ((match-clause? var clause ...) (match-body var clause ...)) ...
-               (else (error "match failed" var)))))))
+               (else (error "match failed"
+                            var
+                            (list (clause-head clause ...) ...))))))))
+
+    (define-syntax clause-head
+      (syntax-rules (= equal is)
+        ((clause-head = x . _) '(= x))
+        ((clause-head equal x . _) '(equal x))
+        ((clause-head is x . _) '(is x))
+        ((clause-head x . _) 'x)))
 
     (define-syntax match-clause?
       (syntax-rules (= equal is)
@@ -149,7 +158,7 @@
            (match-let_ subject name rest bindings body))))
 
     (cond-expand
-      ((library (gerbil core))
+      (gerbil
          ; The underscore is a reserved magic character in Gerbil.
          ; It cannot be used as a keyword in macros.
          ; However, (let ((_ foo))) treats the _ as a wildcard/ignore,
