@@ -7,4 +7,5 @@
         (schemepunk hash-table)
         (schemepunk set)
         (schemepunk multimap)
+        (schemepunk json)
         (schemepunk datalog))
