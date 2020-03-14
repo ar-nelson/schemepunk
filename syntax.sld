@@ -9,14 +9,14 @@
           one-of
           none-of
           compl
+          dotimes
           match
           match?
           match-let
           let-match
           let*-match)
 
-  (import (scheme base)
-          (scheme case-lambda))
+  (import (scheme base))
 
   (begin
     (define-syntax λ
@@ -75,6 +75,14 @@
 
     (define (compl pred?)
       (λ(x) (not (pred? x))))
+
+    (define-syntax dotimes
+      (syntax-rules ()
+        ((dotimes n . body)
+           (let1 max-i n
+             (do ((i 0 (+ i 1)))
+                 ((>= i max-i))
+                 . body)))))
 
     ;; match: A simple pattern-matching macro, similar to ML-family languages.
     ;;

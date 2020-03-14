@@ -8,4 +8,7 @@
         (schemepunk set)
         (schemepunk multimap)
         (schemepunk json)
+        (schemepunk term-colors)
+        (schemepunk debug)
+        (schemepunk debug indent)
         (schemepunk datalog))
