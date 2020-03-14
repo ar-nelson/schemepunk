@@ -74,13 +74,13 @@
     (define (pass-test name)
       (set! passed-count (+ passed-count 1))
       (write-indent)
-      (write-string (green (string-append "✓ " name)))
+      (write-colored green (string-append "✓ " name))
       (newline))
 
     (define (fail-test name err)
       (set! failed (snoc failed `(,(current-suite) ,name ,err)))
       (write-indent)
-      (write-string (red (string-append "✗ " name)))
+      (write-colored red (string-append "✗ " name))
       (newline))
 
     (define-syntax assert-true
@@ -136,12 +136,12 @@
             (form->indent err)))))
 
     (define (end-test-runner)
-      (write-string
-        (green (string-append (number->string passed-count) " tests passed")))
+      (write-colored green
+        (string-append (number->string passed-count) " tests passed"))
       (newline)
       (unless (null? failed)
-        (write-string
-          (red (string-append (number->string (length failed)) " tests failed")))
+        (write-colored red
+          (string-append (number->string (length failed)) " tests failed"))
         (newline)
         (write-reports (map (lambda (x) (apply failure->report x)) failed)))
       (exit (length failed)))))

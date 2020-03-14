@@ -1,5 +1,15 @@
 (define-library (schemepunk debug indent scheme)
-  (export form->indent)
+  (export form->indent
+
+          color-scheme-list
+          color-scheme-vector
+          color-scheme-set
+          color-scheme-hash-table
+          color-scheme-symbol
+          color-scheme-string
+          color-scheme-number
+          color-scheme-record
+          color-scheme-special)
 
   (import (scheme base)
           (scheme write)
@@ -22,60 +32,71 @@
        (begin (define (record? x) #f))))
 
   (begin
+    (define color-scheme-list (make-parameter cyan))
+    (define color-scheme-vector (make-parameter cyan))
+    (define color-scheme-set (make-parameter yellow))
+    (define color-scheme-hash-table (make-parameter yellow))
+    (define color-scheme-symbol (make-parameter white))
+    (define color-scheme-string (make-parameter green))
+    (define color-scheme-number (make-parameter magenta))
+    (define color-scheme-record (make-parameter yellow))
+    (define color-scheme-special (make-parameter red))
+
     (define (list->indents xs)
       (if (proper-list? xs)
           (map form->indent xs)
           (let loop ((contents '()) (next xs))
             (if (pair? next)
                 (loop (cons (form->indent (car next)) contents) (cdr next))
-                (reverse (cons (form->indent next)
-                               (cons (color cyan ".") contents)))))))
+                (reverse `(,(form->indent next)
+                           ,(color (color-scheme-list) ".")
+                           ,@contents))))))
 
     (define (form->indent form)
       (match form
         (((is symbol? head) x . xs)
            (make-indent-group
              (make-colored-text
-               `((,cyan . "(")
-                 (#f . ,(symbol->string head))
+               `((,(color-scheme-list) . "(")
+                 (,(color-scheme-symbol) . ,(symbol->string head))
                  (#f . " ")))
              (cons (form->indent x) (list->indents xs))
-             (color cyan ")")))
-        (() (color cyan "()"))
+             (color (color-scheme-list) ")")))
+        (() (color (color-scheme-list) "()"))
         (is pair?
            (make-indent-group
-             (color cyan "(")
+             (color (color-scheme-list) "(")
              (list->indents form)
-             (color cyan ")")))
+             (color (color-scheme-list) ")")))
         (is vector?
            (make-indent-group
-             (color cyan "#(")
+             (color (color-scheme-vector) "#(")
              (list->indents (vector->list form))
-             (color cyan ")")))
+             (color (color-scheme-vector) ")")))
         (is set?
            (make-indent-group
-             (color yellow "#<[")
+             (color (color-scheme-set) "#<[")
              (list->indents (set->list form))
-             (color yellow "]>")))
+             (color (color-scheme-set) "]>")))
         (is hash-table?
            (make-indent-group
-             (color yellow "#<{")
+             (color (color-scheme-hash-table) "#<{")
              (map (λ x (make-indent-group
                          (make-indent-group
                            #f
                            (list (form->indent (car x)))
-                           (color yellow ":"))
+                           (color (color-scheme-hash-table) ":"))
                          (list (form->indent (cdr x)))
                          #f))
                   (hash-table->alist form))
-             (color yellow "}>")))
-        (is symbol? (symbol->string form))
+             (color (color-scheme-hash-table) "}>")))
+        (is symbol? (color (color-scheme-symbol) (symbol->string form)))
         (is string?
            (let1 str (open-output-string)
              (write form str)
-             (color green (get-output-string str))))
+             (color (color-scheme-string) (get-output-string str))))
         (is number?
-           (color magenta (number->string form)))
+           (color (color-scheme-number) (number->string form)))
         (is record?
            (cond-expand
              ((library (srfi 99))
@@ -83,20 +104,20 @@
                        (name (symbol->string (rtd-name rtd)))
                        (fields (vector->list (rtd-all-field-names rtd))))
                   (if (null? fields)
-                    (color yellow (string-append "#<" name ">"))
+                    (color (color-scheme-record) (string-append "#<" name ">"))
                     (make-indent-group
-                      (color yellow (string-append "#<" name " "))
+                      (color (color-scheme-record) (string-append "#<" name " "))
                       (map (λ field
                              (make-indent-group
-                               (color yellow
+                               (color (color-scheme-record)
                                  (string-append (symbol->string field) ":"))
                                (list (form->indent
                                        ((rtd-accessor rtd field) form)))
                                #f))
                            fields)
-                      (color yellow ">")))))
+                      (color (color-scheme-record) ">")))))
              (else (error "not implemented"))))
         (else
            (let1 str (open-output-string)
              (write form str)
-             (color red (get-output-string str))))))))
+             (color (color-scheme-special) (get-output-string str))))))))

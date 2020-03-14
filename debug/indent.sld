@@ -16,7 +16,8 @@
           (scheme write)
           (scheme case-lambda)
           (schemepunk syntax)
-          (schemepunk list))
+          (schemepunk list)
+          (schemepunk term-colors))
 
   (cond-expand
     (gauche
@@ -86,8 +87,10 @@
 
     (define (write-colored-text x)
       (for-each
-        (λ span (write-string
-          (if (car span) ((car span) (cdr span)) (cdr span))))
+        (λ span
+          (if (car span)
+              (write-colored (car span) (cdr span))
+              (write-string (cdr span))))
         (colored-text-spans x)))
 
     (define (write-unindented x)

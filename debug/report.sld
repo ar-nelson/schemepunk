@@ -18,30 +18,28 @@
     (define write-report-separator
       (case-lambda
         ((caption)
-           (write-string (yellow-escape))
+           (write-color yellow)
            (if (> (string-length caption) (- (output-width) 4))
              (begin
                (write-string "┤ ")
-               (write-string (bold-escape))
-               (write-string (substring caption 0 (- (output-width) 5)))
-               (write-string (reset-bold-escape))
+               (write-colored bold-blue
+                 (substring caption 0 (- (output-width) 5)))
+               (write-color yellow)
                (write-string "… ├"))
              (let1 line-width (- (output-width) (string-length caption) 4)
                (dotimes line-width
                  (write-string "─"))
                (write-string "┤ ")
-               (write-string (bold-escape))
-               (write-string caption)
-               (write-string (reset-bold-escape))
-               (write-string (yellow-escape))
+               (write-colored bold-blue caption)
+               (write-color yellow)
                (write-string " ├")))
-           (write-string (reset-color-escape))
+           (reset-color)
            (newline))
         (()
-           (write-string (yellow-escape))
+           (write-color yellow)
            (dotimes (output-width)
              (write-string "─"))
-           (write-string (reset-color-escape))
+           (reset-color)
            (newline))))
 
     (define-record-type Report
