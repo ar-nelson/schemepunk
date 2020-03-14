@@ -1,11 +1,7 @@
 (define-library (schemepunk test)
   (export test-suite
           test
-          begin-test-suite
-          end-test-suite
           end-test-runner
-          pass-test
-          fail-test
           assert-true
           assert-false
           assert-eq
@@ -16,80 +12,75 @@
 
   (import (scheme base)
           (scheme write)
-          (scheme process-context))
+          (scheme process-context)
+          (scheme cxr)
+          (schemepunk debug)
+          (schemepunk debug indent)
+          (schemepunk term-colors))
 
   (cond-expand
-    ((library (gauche base))
-       (import (only (gauche base) report-error))
-       (begin
-         (define-syntax error-string
-           (syntax-rules ()
-             ((error-string err)
-                (let ((str (open-output-string)))
-                  (report-error err str)
-                  (get-output-string str)))))))
-    ((library (chibi))
-       (import (only (chibi) print-exception))
-       (begin
-         (define-syntax error-string
-           (syntax-rules ()
-             ((error-string err)
-                (let ((str (open-output-string)))
-                  (parameterize ((current-error-port str))
-                    (print-exception err))
-                  (get-output-string str)))))))
-    (else
-      (begin (define (error-string err) 
-               (string-append red "ERROR: " reset (error-object-message err))))))
+    (gauche (import (only (gauche base) report-error)))
+    (chibi (import (only (chibi) print-exception)))
+    (else))
 
   (begin
     (define passed-count 0)
     (define failed '())
-    (define current-suite '())
+    (define current-suite (make-parameter '()))
 
     (define-syntax test-suite
       (syntax-rules ()
         ((test-suite name body ...)
-           (begin (begin-test-suite name)
-                  body ...
-                  (end-test-suite name)))))
+           (begin (write-indent)
+                  (write-string (string-append name ":"))
+                  (newline)
+                  (parameterize ((current-suite (snoc (current-suite) name)))
+                    body ...)))))
 
     (define-syntax test
       (syntax-rules ()
         ((test name body ...)
-           (guard (err ((failure? err) (fail-test name err))
-                       ((error-object? err) (fail-test name `(error ,(error-string err))))
-                       (else (fail-test name `(error ,err))))
+           ;; Error stack traces must be printed directly here.
+           ;; They cannot be printed inside of a function or macro,
+           ;; or (at least in Gauche) that will become part of the trace.
+           (guard (err ((cond-expand
+                          (gerbil (or (error-object? err) (exception? err)))
+                          (else (error-object? err)))
+                        (fail-test name
+                          (cond-expand
+                            (gauche
+                              (let ((str (open-output-string)))
+                                (report-error err str)
+                                (color red (get-output-string str))))
+                            (chibi
+                              (let ((str (open-output-string)))
+                                (parameterize ((current-error-port str))
+                                  (print-exception err))
+                                (color red (get-output-string str))))
+                            (gerbil
+                              (let ((str (open-output-string)))
+                                (display-exception err str)
+                                (color red (get-output-string str))))
+                            (else err))))
+                       (#t (fail-test name err)))
                   (begin body ...
                          (pass-test name))))))
 
-    (define (indent)
-      (define str "")
-      (for-each (lambda (_) (set! str (string-append str "  "))) current-suite)
-      str)
+    (define (write-indent)
+      (for-each (lambda (_) (write-string "  ")) (current-suite)))
 
     (define (snoc xs x) (append xs (list x)))
 
-    (define (begin-test-suite name)
-      (display (string-append (indent) name ":"))
-      (newline)
-      (set! current-suite (snoc current-suite name)))
-
-    (define (end-test-suite name)
-      (set! current-suite (cdr current-suite)))
-
-    (define green (string #\x001b #\[ #\3 #\2 #\m))
-    (define red (string #\x001b #\[ #\3 #\1 #\m))
-    (define reset (string #\x001b #\[ #\0 #\m))
-
     (define (pass-test name)
       (set! passed-count (+ passed-count 1))
-      (display (string-append (indent) green "✓ " name reset))
+      (write-indent)
+      (write-string (green (string-append "✓ " name)))
       (newline))
 
     (define (fail-test name err)
-      (set! failed (snoc failed `(,current-suite ,name ,@(cdr err))))
-      (display (string-append (indent) red "✗ " name reset))
+      (set! failed (snoc failed `(,(current-suite) ,name ,err)))
+      (write-indent)
+      (write-string (red (string-append "✗ " name)))
       (newline))
 
     (define-syntax assert-true
@@ -107,13 +98,16 @@
            (when condition (fail msg)))))
 
     (define (assert-eq actual expected)
-      (unless (eq? actual expected) (fail actual expected)))
+      (unless (eq? actual expected)
+        (fail (form->indent actual) (form->indent expected))))
 
     (define (assert-eqv actual expected)
-      (unless (eqv? actual expected) (fail actual expected)))
+      (unless (eqv? actual expected)
+        (fail (form->indent actual) (form->indent expected))))
 
     (define (assert-equal actual expected)
-      (unless (equal? actual expected) (fail actual expected)))
+      (unless (equal? actual expected)
+        (fail (form->indent actual) (form->indent expected))))
 
     (define (fail . xs)
       (raise `(test-failure ,@xs)))
@@ -121,30 +115,33 @@
     (define (failure? x)
       (and (pair? x) (eq? (car x) 'test-failure)))
 
-    (define (print-failure suite name cause . rest)
-      (newline)
-      (display (string-append red "Failure: " name reset))
-      (newline)
+    (define (failure->report suite test err)
       (cond
-        ((pair? rest)
-           (let ((prn (if (and (pair? (cdr rest)) (eqv? (cadr rest) 'raw))
-                          display
-                          write)))
-             (display (string-append red "expected " reset))
-             (prn (car rest))
-             (newline)
-             (display (string-append red " but got " reset))
-             (prn cause)))
-        (else (display cause)))
-      (newline))
+        ((failure? err)
+           (make-report test
+             (cond
+               ((pair? (cddr err))
+                  (make-paragraph "Expected {0} but got {1}" (cadr err) (caddr err)))
+               ((string? (car err))
+                  (make-paragraph (car err)))
+               ((or (colored-text? (car err)) (indent-group? (car err)))
+                  (car err))
+               (else
+                  (form->indent (car err))))))
+        ((or (colored-text? err) (indent-group? err))
+          (make-report test err))
+        (else
+          (make-report test
+            (color red "Test raised error:")
+            (form->indent err)))))
 
     (define (end-test-runner)
-      (display (string-append
-        green (number->string passed-count) " tests passed" reset))
+      (write-string
+        (green (string-append (number->string passed-count) " tests passed")))
       (newline)
-      (if (pair? failed) (begin
-        (display (string-append
-          red (number->string (length failed)) " tests failed" reset))
+      (unless (null? failed)
+        (write-string
+          (red (string-append (number->string (length failed)) " tests failed")))
         (newline)
-        (for-each (lambda (err) (apply print-failure err)) failed)))
+        (write-reports (map (lambda (x) (apply failure->report x)) failed)))
       (exit (length failed)))))

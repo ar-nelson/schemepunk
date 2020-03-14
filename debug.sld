@@ -1,12 +1,19 @@
 (define-library (schemepunk debug)
   (export form->indent json->indent
-          write-debug write-debug-json)
+          write-debug write-debug-json
+
+          make-report
+          make-paragraph
+          write-report
+          write-reports
+          write-report-separator)
 
   (import (scheme base)
           (scheme write)
           (schemepunk debug indent)
           (schemepunk debug indent scheme)
           (schemepunk debug indent json)
+          (schemepunk debug report)
           (schemepunk term-colors))
 
   (begin
