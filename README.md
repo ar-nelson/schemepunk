@@ -1,7 +1,301 @@
 # Schemepunk
 
-A small R7RS Scheme standard library. Should run on all R7RS Schemes.
+A kitchen-sink utility library for several R7RS Scheme dialects.
 
-Includes several R7RS Large libraries (list, vector, comparator, sort, set,
-hash-table), a syntax library with pattern-matching and threading macros,
-a simple JSON parser, and a simple Datalog implementation.
+This library is **unfinished and under heavy development**. It's optimized for
+the needs of a few related projects I'm working on, mostly programming language
+interpreters and compilers.
+
+To use this library, drop this repository in a `schemepunk` directory in your
+project, ideally as a Git submodule. The shell scripts in `scripts` can run unit
+tests or Scheme applications in all of Schemepunk's supported Scheme dialects,
+and they know how to find and include `.sld` library dependencies, even in
+Schemes that don't natively support this.
+
+## Supported Schemes
+
+- [Gauche][gauche]
+- [Gerbil][gerbil]
+- [Chibi][chibi]
+- [Kawa][kawa]
+- [Larceny][larceny]
+
+## Features
+
+### SRFI Implementations
+
+| SRFI           | Module                    | Description                  |
+| -------------- | ------------------------- | ---------------------------- |
+| [1][srfi1]     | `(schemepunk list)`       | List library *(plus extras)* |
+| [113][srfi113] | `(schemepunk set)`        | Sets and bags                |
+| [125][srfi125] | `(schemepunk hash-table)` | Hash tables                  |
+| [128][srfi128] | `(schemepunk comparator)` | Comparators                  |
+| [132][srfi132] | `(schemepunk sort)`       | Sorting                      |
+| [133][srfi133] | `(schemepunk vector)`     | Vector library               |
+
+These modules are aliases for several R7RS Large libraries, along with
+implementations of these libraries for Schemes that don't provide them by
+default. The implementations are in the `polyfills` directory; they are copied
+from either the SRFI documents or Chibi Scheme.
+
+`(schemepunk list)` is a special case. Because practically every Scheme
+implements SRFI 1, Schemepunk doesn't polyfill it, so `(schemepunk list)` is
+just an alias for your Scheme's SRFI 1 implementation, plus a few extra list
+functions.
+
+This is still useful for portability, because some Schemes (Gerbil) don't use
+the standard SRFI import naming conventions; you can't `(import (srfi 1))` in
+Gerbil.
+
+`(schemepunk list)` provides these additional list functions:
+
+- `(snoc <list> <elem>)` is a reverse `cons`; it constructs a list by appending
+  `elem` to the end of `list`.
+
+- `(map-with-index <fn> <list>)` is like `map`, but it expects `fn` to take two
+  arguments. The second argument is the index of the list item.
+
+- `(string-join <delimiter> <strings>)` concatenates `strings` (a list of
+  strings) with `delimiter` in between.
+
+- `(list-gen <fn>)` is a generator-style unfold function. `fn` is a lambda that
+  takes two arguments, usually named `yield` and `done`. `(yield x)` adds `x` to
+  the end of the list being constructed, then recursively calls `fn`. `done` is
+  the current list (not a function!), and should be returned to end the
+  recursion.
+
+    For example, this reads characters from `(current-input-port)` into a list
+    until EOF:
+
+    ```scheme
+    (list-gen (lambda (yield done)
+                (let ((ch (read-char)))
+                  (if (eof-object? ch) done (yield ch)))))
+    ```
+
+- `(topological-sort <dependencies>)` sorts a list of dependencies in dependency
+  order.
+
+    `dependencies` is an alist, in which the car of each element is a dependency,
+    and the cdr of each element is a list of its dependencies, each of which must
+    be the car of another element. The list must contain no dependency cycles.
+
+### Utility Macros
+
+`(schemepunk syntax)`
+
+- `λ` is shorthand for `lambda`. Parentheses may be omitted for a single
+  argument name: `(λ x (+ x 1))` = `(lambda (x) (+ x 1))`.
+
+- `->`, `->>`, and `as->` are threading macros that behave identically to [their
+  equivalents from Clojure][clojure-threading].
+
+- `(let1 <name> <value> <expressions>…)` is shorthand for `let` with a single
+  variable.
+
+- `λ->` and `λ->>` are a combination of `lambda` and the `->` and `->>`
+  threading macros. They take one unnamed argument. `(λ-> foo bar baz)` is
+  equivalent to `(lambda (x) (-> x foo bar baz))`.
+
+- `(match <value> (<pattern> <expr>…)…)` is a hygenic pattern-matching macro.
+  It raises an error if no pattern matches `value`. The last clause may be an
+  `else` clause, as in `cond` or `case`.
+
+- `(let-match ((<pattern> <value>)…) <expressions>…)` uses the
+  pattern-matching syntax from `match` as destructuring assignment.
+
+`match` is implemented using only `syntax-rules`, so it is more limited than
+similar pattern-matching macros in other Schemes. It cannot distinguish between
+data types, so it uses quoting and keywords to determine which parts of
+a pattern are literals and which are variables.
+
+Examples:
+
+- `x` matches anything and binds it to `x`.
+- `(x y z)` matches `(1 2 3)` and binds `x`=`1`, `y`=`2`, `z`=`3`. It does not
+  match `(1 2)` or `(1 2 3 4)`.
+- `(x . xs)` matches `(1 2 3)` and binds `x`=`1`, `xs`=`(2 3)`. It also matches
+  `(1)` and `(1 2 3 4)`, but does not match `()`.
+- `'x` matches anything `eqv?` to the symbol `x`. It does not bind any
+  variables.
+- `(= #\x)` matches anything `eqv?` to `#\x`.
+- `(equal "foo")` matches anything `equal?` to `"foo"`.
+- `(is even?)` matches any value `foo` for which `(even? foo)` returns a truthy
+  value.
+- `(is even? x)` matches any value `foo` for which `(even? foo)` returns a
+  truthy value. It binds `x`=`foo`.
+
+Clauses may start with any of the keywords `=`, `equal`, or `is`. For example,
+`(equal "foo" "bar")` is a clause that return `"bar"` if `value` is `equal?` to
+`"foo"`.
+
+### JSON
+
+`(schemepunk json)`
+
+Minimal JSON parser. Can encode and decode JSON to/from a simple Scheme
+representation:
+
+| JSON value         | Scheme representation          |
+| ------------------ | ------------------------------ |
+| `null`             | The symbol `null`              |
+| `true`             | The symbol `true`              |
+| `false`            | The symbol `false`             |
+| `3.14`             | `3.14`                         |
+| `"foo"`            | `"foo"`                        |
+| `[1, 2, 3]`        | `(1 2 3)`                      |
+| `{}`               | `(object)`                     |
+| `{"a": 1, "b": 2}` | `(object ("a" . 1) ("b" . 2))` |
+
+- `(read-json <port>)` reads one JSON value from a port and returns it. `<port>`
+  is optional.
+
+- `(write-json <json> <port>)` writes one JSON value to a port. Anything that
+  is not a valid Scheme representation of JSON will be written as `<NOT JSON>`.
+  `<port>` is optional.
+
+- `string->json` and `json->string` convert JSON strings to/from their Scheme
+  representations.
+
+A simple event-based parser is also available, for performance:
+
+- `(make-json-context)` creates a new context object.
+
+- `(read-json-event <context> <port>)` reads one JSON event from a port. It
+  returns two values: `(event payload)`, where `event` is the event type and
+  `payload` is an optional value. It takes a context object, which keeps track
+  of nesting and object keys. `<port>` is optional.
+
+| Event          | Payload                |
+| -------------- | ---------------------- |
+| `null`         | `#f`                   |
+| `boolean`      | Value (`#t` or `#f`)   |
+| `number`       | Value (number)         |
+| `string`       | Value (string)         |
+| `array-start`  | `#f`                   |
+| `array-end`    | `#f`                   |
+| `object-start` | `#f`                   |
+| `key`          | Key name (string)      |
+| `object-end`   | `#f`                   |
+| `error`        | Error message (string) |
+
+### Terminal Colors
+
+`(schemepunk term-colors)`
+
+ANSI escape codes for terminal colors.
+
+`(write-colored <color> <string>)` writes `string` to `(current-output-port)`,
+with the ANSI escape codes to make it appear as `color`. The escape codes are
+not printed if Schemepunk detects that the current terminal does not support
+them; this can be overridden by setting the parameter `term-colors-enabled?` to
+`#t`.
+
+`<color>` is a color object, which may be one of:
+
+- The 16 colors `black`, `red`, `yellow`, `green`, `blue`, `cyan`, `magenta`,
+  `white` `light-black` (or `gray`), `light-red`, `light-yellow`, `light-green`,
+  `light-blue`, `light-cyan`, `light-magenta`, and `light-white`.
+- The 8 bold colors `bold-black`, `bold-red`, `bold-yellow`, `bold-green`,
+  `bold-blue`, `bold-cyan`, `bold-magenta`, and `bold-white`. Depending on your
+  terminal, these may look exactly like the light colors, or they may be
+  rendered in a bold font.
+
+Colors can also be constructed with `make-color`, which takes any combination of
+[SGR parameters][sgr] from these groups:
+
+- Foreground colors `fg-black`, `fg-red`, `fg-light-red`, etc.
+- Background colors `bg-black`, `bg-red`, etc.
+- Attributes `attr-bold`, `attr-italic`, `attr-negative`, or `attr-underline`.
+
+Order does not matter, and any or all of these can be omitted. `(make-color)`
+with no arguments is the color reset escape code, also available as `reset`.
+
+For more fine-grained control, `(write-color <color>)` writes a single ANSI
+escape code. Make sure to reset with `(reset-color)` after writing!
+
+### Pretty Printing
+
+`(schemepunk debug)`
+
+Prints Scheme data and JSON in an indented, colorized format. Adapts to the
+terminal width.
+
+The internals of this library are complex and likely to change, but the most
+relevant functions are `write-debug` and `write-json`, which write Scheme data
+or JSON to `(current-output-port)`. `write-debug` is extremely useful as an
+alternative to `display`/`write` for print-statement debugging, because it
+provides sensible indentation and syntax highlighting.
+
+There is also a `(schemepunk debug report)` sublibrary which prints error
+reports in a similar style to Rust. It is incomplete and I am currently
+reworking its API, so it is not documented here.
+
+### Test Runner
+
+`(schemepunk test)`
+
+A unit test framework modeled after Javascript's [Mocha][mocha]. Not based on
+any SRFI.
+
+Test suites are defined as `(test-suite <name> <tests>…)`, where `<tests>` is
+one or more `(test <name> <expressions>…)` clauses. Test suite files have the
+`.test.scm` extension.
+
+Tests are made up of assertions. `(schemepunk test)` provides these assertion
+functions:
+
+- `(assert-true <message> <value>)` *(`message` is optional)*
+- `(assert-false <message> <value>)` *(`message` is optional)*
+- `(assert-eq <actual> <expected>)`
+- `(assert-eqv <actual> <expected>)`
+- `(assert-equal <actual> <expected>)`
+- `(fail <message>)`
+
+`(end-test-runner)` prints a report of passed/failed tests and ends the process
+with the approporate return code, but you shouldn't need to call this on your
+own. The test runner scripts in `scripts` take care of finding all `.test.scm`
+files in the project, running all of them, and running `(end-test-runner)` at
+the end.
+
+The `Makefile` contains usage examples for the test runner scripts. Finding the
+test files and running the tests are split into two separate scripts, because
+some of my projects need to search only specific subdirectories for test files.
+
+### Datalog (WIP)
+
+`(schemepunk datalog)`
+
+Simple Datalog logic programming library. Still unfinished, not much to see
+here. So far, it supports semi-naive evaluation and stratified negation.
+
+## License
+
+Copyright &copy; 2020 Adam Nelson
+
+Schemepunk is distributed under the [Blue Oak Model License][blue-oak]. It is
+a MIT/BSD-style license, but with [some clarifying improvements][why-blue-oak]
+around patents, attribution, and multiple contributors.
+
+Schemepunk also includes MIT/BSD-licensed code from the following authors:
+
+- SRFI 113, 125, 132, and 133 implementations are taken from Chibi Scheme,
+  copyright &copy; 2009-2018 Alex Shinn
+- SRFI 128 implementation copyright &copy; 2015 John Cowan
+
+[gauche]: http://practical-scheme.net/gauche/
+[chibi]: http://synthcode.com/scheme/chibi/
+[kawa]: https://www.gnu.org/software/kawa/
+[gerbil]: https://cons.io/
+[larceny]: http://www.larcenists.org/
+[srfi1]: https://srfi.schemers.org/srfi-1/
+[srfi113]: https://srfi.schemers.org/srfi-113/
+[srfi125]: https://srfi.schemers.org/srfi-125/
+[srfi128]: https://srfi.schemers.org/srfi-128/
+[srfi132]: https://srfi.schemers.org/srfi-132/
+[srfi133]: https://srfi.schemers.org/srfi-133/
+[clojure-threading]: https://clojure.org/guides/threading_macros
+[sgr]: https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_parameters
+[mocha]: https://mochajs.org/
+[blue-oak]: https://blueoakcouncil.org/license/1.0.0
+[why-blue-oak]: https://writing.kemitchell.com/2019/03/09/Deprecation-Notice.html
