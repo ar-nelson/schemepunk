@@ -279,7 +279,7 @@
         ('null (write-string "null" port))
         ('true (write-string "true" port))
         ('false (write-string "false" port))
-        (is number?
+        ((? number?)
           (if (integer? json)
               (write (exact json) port)
               (let1 str (number->string (inexact json))
@@ -291,7 +291,7 @@
                       (substring str 1 (string-length str))
                       str)
                   port))))
-        (is string?
+        ((? string?)
           (write-char #\" port)
           (write-string (escape-json-string json) port)
           (write-char #\" port))
@@ -308,7 +308,7 @@
                   (write-string ", " port)
                   (loop (cdr xs))))))
           (write-char #\} port))
-        (is list?
+        ((? list?)
           (write-char #\[ port)
           (unless (null? json)
             (let loop ((xs json))

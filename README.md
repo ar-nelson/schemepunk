@@ -97,37 +97,29 @@ Gerbil.
   threading macros. They take one unnamed argument. `(λ-> foo bar baz)` is
   equivalent to `(lambda (x) (-> x foo bar baz))`.
 
-- `(match <value> (<pattern> <expr>…)…)` is a hygenic pattern-matching macro.
-  It raises an error if no pattern matches `value`. The last clause may be an
-  `else` clause, as in `cond` or `case`.
+- `(match <value> (<pattern> <expr>…)…)` is a hygenic pattern-matching macro,
+  based on Alex Shinn's `match-simple.scm`, which is itself based on Andrew
+  Wright's `match`. It is a portable subset of the functionality of the `match`
+  packages in Chibi and Gauche.
 
-- `(let-match ((<pattern> <value>)…) <expressions>…)` uses the
+    It supports only the basic features of [`(chibi match)`][chibi-match]. It is
+    missing the `=>`, `@`, `$`, `=`, `..1`, `get!`, and `set!` operators, and it
+    does not support the symbol `...` as an ellipsis operator (use `___` or `…`
+    instead).
+
+- `(match-let ((<pattern> <value>)…) <expressions>…)` uses the
   pattern-matching syntax from `match` as destructuring assignment.
 
-`match` is implemented using only `syntax-rules`, so it is more limited than
-similar pattern-matching macros in other Schemes. It cannot distinguish between
-data types, so it uses quoting and keywords to determine which parts of
-a pattern are literals and which are variables.
+    Related functions `match-let*`, `match-let1`, and `match-letrec` are also
+    available.
 
-Examples:
+- `(match-lambda <pattern> <expressions>…)` defines a lambda of one argument
+  that matches its argument against a pattern. `matchλ` is an alias.
+  `match-lamda*` matches its entire argument list against the pattern.
 
-- `x` matches anything and binds it to `x`.
-- `(x y z)` matches `(1 2 3)` and binds `x`=`1`, `y`=`2`, `z`=`3`. It does not
-  match `(1 2)` or `(1 2 3 4)`.
-- `(x . xs)` matches `(1 2 3)` and binds `x`=`1`, `xs`=`(2 3)`. It also matches
-  `(1)` and `(1 2 3 4)`, but does not match `()`.
-- `'x` matches anything `eqv?` to the symbol `x`. It does not bind any
-  variables.
-- `(= #\x)` matches anything `eqv?` to `#\x`.
-- `(equal "foo")` matches anything `equal?` to `"foo"`.
-- `(is even?)` matches any value `foo` for which `(even? foo)` returns a truthy
-  value.
-- `(is even? x)` matches any value `foo` for which `(even? foo)` returns a
-  truthy value. It binds `x`=`foo`.
-
-Clauses may start with any of the keywords `=`, `equal`, or `is`. For example,
-`(equal "foo" "bar")` is a clause that return `"bar"` if `value` is `equal?` to
-`"foo"`.
+- `(match-guard ((<pattern> <handler>…)…) <expressions>…)` is a `guard`
+  form with pattern-matching. It matches the raised error against each
+  `pattern`.
 
 ### JSON
 
@@ -295,6 +287,7 @@ Schemepunk also includes MIT/BSD-licensed code from the following authors:
 [srfi132]: https://srfi.schemers.org/srfi-132/
 [srfi133]: https://srfi.schemers.org/srfi-133/
 [clojure-threading]: https://clojure.org/guides/threading_macros
+[chibi-match]: http://synthcode.com/scheme/chibi/lib/chibi/match.html
 [sgr]: https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_parameters
 [mocha]: https://mochajs.org/
 [blue-oak]: https://blueoakcouncil.org/license/1.0.0

@@ -172,7 +172,7 @@
                        (append-map
                          (λ tuple
                            (match (match-vars (cdr atom) tuple vars)
-                             (is not '())
+                             ((? not) '())
                              (vars+ (list vars+))))
                          (set->list (multimap-ref facts (car atom)))))
                      var-sets)

@@ -54,7 +54,7 @@
 
     (define (form->indent form)
       (match form
-        (((is symbol? head) x . xs)
+        (((? symbol? head) x . xs)
            (make-indent-group
              (make-colored-text
                `((,(color-scheme-list) . "(")
@@ -63,22 +63,22 @@
              (cons (form->indent x) (list->indents xs))
              (color (color-scheme-list) ")")))
         (() (color (color-scheme-list) "()"))
-        (is pair?
+        ((? pair?)
            (make-indent-group
              (color (color-scheme-list) "(")
              (list->indents form)
              (color (color-scheme-list) ")")))
-        (is vector?
+        ((? vector?)
            (make-indent-group
              (color (color-scheme-vector) "#(")
              (list->indents (vector->list form))
              (color (color-scheme-vector) ")")))
-        (is set?
+        ((? set?)
            (make-indent-group
              (color (color-scheme-set) "#<[")
              (list->indents (set->list form))
              (color (color-scheme-set) "]>")))
-        (is hash-table?
+        ((? hash-table?)
            (make-indent-group
              (color (color-scheme-hash-table) "#<{")
              (map (λ x (make-indent-group
@@ -90,14 +90,14 @@
                          #f))
                   (hash-table->alist form))
              (color (color-scheme-hash-table) "}>")))
-        (is symbol? (color (color-scheme-symbol) (symbol->string form)))
-        (is string?
+        ((? symbol?) (color (color-scheme-symbol) (symbol->string form)))
+        ((? string?)
            (let1 str (open-output-string)
              (write form str)
              (color (color-scheme-string) (get-output-string str))))
-        (is number?
+        ((? number?)
            (color (color-scheme-number) (number->string form)))
-        (is record?
+        ((? record?)
            (cond-expand
              ((library (srfi 99))
                 (let* ((rtd (record-rtd form))

@@ -12,9 +12,14 @@
           dotimes
           match
           match?
+          match-lambda
+          match-lambda*
+          matchλ
           match-let
-          let-match
-          let*-match)
+          match-let*
+          match-letrec
+          match-let1
+          match-guard)
 
   (import (scheme base))
 
@@ -84,123 +89,210 @@
                  ((>= i max-i))
                  . body)))))
 
-    ;; match: A simple pattern-matching macro, similar to ML-family languages.
+    ;; match: A simple pattern-matching macro, based on Alex Shinn's
+    ;; match-simple.scm, which is itself based on Andrew Wright's `match`.
     ;;
-    ;; Quoted values are literals, and are compared with 'eqv?'.
-    ;; The keywords '=', 'equal', and 'is' can be used at the start of clauses.
-    ;; (= x) matches when the subject is eqv? to x.
-    ;; (equal x) matches when the subject is equal? to x.
-    ;; (is? f) matches when the predicate f applied to the subject is true.
+    ;; Most Schemes include a version of `match`, but they all have subtle
+    ;; differences and incompatibilities. This version should behave the same on
+    ;; all supported Schemes.
+    ;;
+    ;; Notably, this version of match does allow `...` as an ellipsis, because
+    ;; Gerbil does not support alternate ellipsis symbols in syntax-rules[1].
+    ;; (And because, even in other Schemes, using an alternate ellipsis is
+    ;; tricky and difficult to make work.)
+    ;; Valid ellipsis symbols are `___` and `…`.
+    ;;
+    ;; This is a from-scratch reimplementation that builds a cond expression.
+    ;; The version in match-simple.scm breaks Kawa compilation for some reason.
+    ;;
+    ;; [1]: https://github.com/vyzo/gerbil/issues/412
 
     (define-syntax match
       (syntax-rules (else)
-        ((match subject (clause ...) ... (else . else-clause))
-           (let ((var subject))
+        ((match subject (pattern . body) ... (else . else-clause))
+           (let1 var subject
              (cond
-               ((match-clause? var clause ...) (match-body var clause ...)) ...
+               ((match? var pattern) (match-body ((pattern () var)) () body)) ...
                (else . else-clause))))
-        ((match subject (clause ...) ...)
-           (let ((var subject))
+        ((match subject (pattern . body) ...)
+           (let1 var subject
              (cond
-               ((match-clause? var clause ...) (match-body var clause ...)) ...
+               ((match? var pattern) (match-body ((pattern () var)) () body)) ...
                (else (error "match failed"
                             var
-                            (list (clause-head clause ...) ...))))))))
-
-    (define-syntax clause-head
-      (syntax-rules (= equal is)
-        ((clause-head = x . _) '(= x))
-        ((clause-head equal x . _) '(equal x))
-        ((clause-head is x . _) '(is x))
-        ((clause-head x . _) 'x)))
-
-    (define-syntax match-clause?
-      (syntax-rules (= equal is)
-        ((match-clause? subject = value . _) (eqv? subject value))
-        ((match-clause? subject equal value . _) (equal? subject value))
-        ((match-clause? subject is pred? . _) (pred? subject))
-        ((match-clause? subject pattern . _) (match? subject pattern))))
+                            '(pattern ...))))))))
 
     (define-syntax match?
-      (syntax-rules (= quote equal is)
-        ((match? subject ()) (null? subject))
-        ((match? subject (= value)) (eqv? subject value))
-        ((match? subject 'value) (eqv? subject 'value))
-        ((match? subject (equal value)) (equal? subject value))
-        ((match? subject (is pred? . _)) (pred? subject))
-        ((match? subject (hd . tl))
+      (syntax-rules (? quote quasiquote unquote unquote-splicing and or not ___ …)
+        ((_ subject ()) (null? subject))
+        ((_ subject 'value) (equal? subject 'value))
+        ((_ subject `,x) (match? subject x))
+        ((_ subject `(,@x)) (match? subject x))
+        ((_ subject `(,@x . _))
+           (syntax-error ",@ pattern can only occur at the end of a list"))
+        ((_ subject `(hd . tl))
+           (and (pair? subject)
+                (match? (car subject) `hd)
+                (match? (cdr subject) `tl)))
+        ((_ subject `value) (equal? subject 'value))
+        ((_ subject (and x ...)) (and (match? subject x) ...))
+        ((_ subject (or x ...)) (or (match? subject x) ...))
+        ((_ subject (not x)) (not (match? subject x)))
+        ((_ subject (? pred? . _)) (pred? subject))
+        ((_ subject (pattern …)) (match? subject (pattern ___)))
+        ((_ subject (pattern ___))
+           (and (list? subject)
+                (let loop ((x subject))
+                  (or (null? x)
+                      (and (match? (car x) pattern) (loop (cdr x)))))))
+        ((_ subject (hd . tl))
            (and (pair? subject)
                 (match? (car subject) hd)
                 (match? (cdr subject) tl)))
-        ((match? subject _) #t)))
+        ((_ subject x)
+           ; This magic expression comes from Alex Shinn's match-simple.scm.
+           ; It tells symbols apart from other literals, in pure hygenic R7RS!
+           (let-syntax ((sym? (syntax-rules ()
+                                ((sym? x) #t)
+                                ((sym? y) (equal? subject x)))))
+             (sym? abracadabra)))))
 
     (define-syntax match-body
-      (syntax-rules (= equal is)
-        ((match-body _ = _ . body) (begin . body))
-        ((match-body _ equal _ . body) (begin . body))
-        ((match-body _ is _ . body) (begin . body))
-        ((match-body subject pattern . body)
-           (match-let ((subject pattern)) () . body))))
+      (syntax-rules (? quote quasiquote unquote unquote-splicing and or not ___ …)
+        ((_ () () body) (begin . body))
+        ((_ () vars body) (let vars . body))
+        ((_ ((() . _) . rest) vars body) (match-body rest vars body))
+        ((_ (('x . _) . rest) vars body) (match-body rest vars body))
+        ((_ ((`,x . subject) . rest) vars body)
+           (match-body ((x . subject) . rest) vars body))
+        ((_ ((`(,@x) . subject) . rest) vars body)
+           (match-body ((x . subject) . rest) vars body))
+        ((_ ((`(hd . tl) outer inner) . rest) vars body)
+           (match-body ((`hd outer (car inner)) (`tl outer (cdr inner)) . rest)
+                       vars
+                       body))
+        ((_ ((`x . _) . rest) vars body) (match-body rest vars body))
+        ((_ (((? pred?) . _) . rest) vars body) (match-body rest vars body))
+        ((_ (((? pred? name) outer inner) . rest) vars body)
+           (match-body_ name outer inner rest vars body))
+        ((_ (((and xs ...) . subject) . rest) vars body)
+           (match-body ((xs . subject) ... . rest) vars body))
+        ((_ (((or xs ...) . subject) . rest) vars body)
+           (match-body ((xs . subject) ... . rest) vars body))
+        ((_ (((not x) . subject) . rest) vars body)
+           (match-body ((x . subject) . rest) vars body))
+        ((_ (((pattern ___) outer inner) . rest) vars body)
+           (match-body ((pattern ((x inner) . outer) x) . rest) vars body))
+        ((_ (((pattern …) outer inner) . rest) vars body)
+           (match-body ((pattern ((x inner) . outer) x) . rest) vars body))
+        ((_ (((hd . tl) outer inner) . rest) vars body)
+           (match-body ((hd outer (car inner)) (tl outer (cdr inner)) . rest)
+                       vars
+                       body))
+        ((_ ((name outer inner) . rest) vars body)
+           (match-body_ name outer inner rest vars body)))))
+
+  ; Gerbil Scheme is a special case for this macro. It doesn't allow _ as
+  ; a macro keyword[2], and it has inconsistent support for the let-syntax
+  ; trick that this macro depends on.
+  ;
+  ; What it *does* support is syntax-rules fenders[3]. Some Schemes allow
+  ; syntax-rules clauses of the form (<pattern> <guard> <expression>), where
+  ; <guard> is a boolean expression. This isn't part of R7RS, but we can use it
+  ; in Gerbil to check for underscores and literal identifiers.
+  ;
+  ; [2]: https://github.com/vyzo/gerbil/issues/413
+  ; [3]: http://www.r6rs.org/r6rs-editors/2006-August/001680.html
+  (cond-expand
+    (gerbil
+      (import (only (gerbil core) defrules syntax underscore? identifier?))
+      (begin
+        (defrules match-body_ ()
+          ((_ x _ _ rest vars body) (underscore? (syntax x))
+             (match-body rest vars body))
+          ((_ x ((arg mapped) . outer) inner rest vars body) (identifier? (syntax x))
+             (match-body_ x outer (map (λ arg inner) mapped) rest vars body))
+          ((_ x () inner rest vars body) (identifier? (syntax x))
+             (match-body rest ((x inner) . vars) body))
+          ((_ _ _ _ rest vars body)
+             (match-body rest vars body)))))
+    (else
+      (begin
+        (define-syntax match-body_
+          (syntax-rules (_)
+            ((_ _ outer inner rest vars body)
+               (match-body rest vars body))
+            ((_ x ((arg mapped) . outer) inner rest vars body)
+               (match-body_ x outer (map (λ arg inner) mapped) rest vars body))
+            ((_ x () inner rest vars body)
+               (let-syntax
+                 ((sym? (syntax-rules ()
+                          ((sym? x) (match-body rest ((x inner) . vars) body))
+                          ((sym? y) (match-body rest vars body)))))
+                 (sym? abracadabra))))))))
+
+  (begin
+    (define-syntax match-lambda
+      (syntax-rules ()
+        ((_ clause ...) (lambda (expr) (match expr clause ...)))))
+
+    (define-syntax match-lambda*
+      (syntax-rules ()
+        ((_ clause ...) (lambda expr (match expr clause ...)))))
+
+    (define-syntax matchλ
+      (syntax-rules () ((_ . xs) (match-lambda . xs))))
 
     (define-syntax match-let
-      (syntax-rules (= quote equal is _)
-        ((match-let () () . body) (begin . body))
-        ((match-let () bindings . body) (let bindings . body))
-        ((match-let ((subject (= x)) . rest) bindings . body)
-           (match-let rest bindings . body))
-        ((match-let ((subject 'x) . rest) bindings . body)
-           (match-let rest bindings . body))
-        ((match-let ((subject (equal x)) . rest) bindings . body)
-           (match-let rest bindings . body))
-        ((match-let ((subject (is pred?)) . rest) bindings . body)
-           (match-let rest bindings . body))
-        ((match-let ((subject (is pred? name)) . rest) bindings . body)
-           (match-let_ subject name rest bindings body))
-        ((match-let ((subject ()) . rest) bindings . body)
-           (match-let rest bindings . body))
-        ((match-let ((subject (hd . tl)) . rest) bindings . body)
-           (match-let (((car subject) hd) . (((cdr subject) tl) . rest))
-                      bindings
-                      . body))
-        ((match-let ((subject name) . rest) bindings . body)
-           (match-let_ subject name rest bindings body))))
-
-    (cond-expand
-      (gerbil
-         ; The underscore is a reserved magic character in Gerbil.
-         ; It cannot be used as a keyword in macros.
-         ; However, (let ((_ foo))) treats the _ as a wildcard/ignore,
-         ; so treating _ as a normal variable does what you'd expect.
-         (define-syntax match-let_
-           (syntax-rules ()
-             ((match-let_ subject name rest bindings body)
-                (match-let rest ((name subject) . bindings) . body)))))
-      (else
-         (define-syntax match-let_
-           (syntax-rules (_)
-             ((match-let_ subject _ rest bindings body)
-                (match-let rest bindings . body))
-             ((match-let_ subject name rest bindings body)
-                (match-let rest ((name subject) . bindings) . body))))))
-
-    ;; let-match: use 'match' patterns to destructure lists.
-
-    (define-syntax let-match
       (syntax-rules ()
-        ((let-match bindings . body) (%let-match bindings () . body))))
+        ((_ ((pat expr)) . body)
+           (match expr (pat . body)))
+        ((_ ((pat expr) ...) . body)
+           (match (list expr ...) ((pat ...) . body)))
+        ((_ loop . rest)
+           (match-named-let loop () . rest))))
 
-    (define-syntax %let-match
+    (define-syntax match-named-let
       (syntax-rules ()
-        ((%let-match ((pattern value) . rest) named . body)
-           (%let-match rest ((name pattern value) . named) . body))
-        ((%let-match () ((name pattern value) ...) . body)
-           (let ((name value) ...)
-             (match-let ((name pattern) ...) ()  . body)))))
+        ((_ loop ((pat expr var) ...) () . body)
+           (let loop ((var expr) ...)
+             (match-let ((pat var) ...)
+               . body)))
+        ((_ loop (v ...) ((pat expr) . rest) . body)
+           (match-named-let loop (v ... (pat expr tmp)) rest . body))))
 
-    (define-syntax let*-match
+    (define-syntax match-letrec
       (syntax-rules ()
-        ((let*-match () . body) (begin . body))
-        ((let*-match ((pattern value) . rest) . body)
-           (let ((name value))
-             (match-let ((name pattern)) ()
-               (let*-match rest . body))))))))
+        ((_ vars . body) (match-letrec-helper () vars . body))))
+
+    (define-syntax match-letrec-helper
+      (syntax-rules ()
+        ((_ ((pat expr var) ...) () . body)
+           (letrec ((var expr) ...)
+             (match-let ((pat var) ...)
+               . body)))
+        ((_ (v ...) ((pat expr) . rest) . body)
+           (match-letrec-helper (v ... (pat expr tmp)) rest . body))))
+
+    (define-syntax match-let*
+      (syntax-rules ()
+        ((_ () . body)
+           (begin . body))
+        ((_ ((pat expr) . rest) . body)
+           (match expr (pat (match-let* rest . body))))))
+
+    (define-syntax match-let1
+      (syntax-rules ()
+        ((_ pat expr . body) (match expr (pat . body)))))
+
+    (define-syntax match-guard
+      (syntax-rules (else)
+        ((_ ((pattern . clause) ... (else . else-clause)) . body)
+           (guard (err ((match? err pattern)
+                          (match-body ((pattern () err)) () clause)) ...
+                       (else . else-clause))
+             . body))
+        ((_ ((pattern . clause) ...) . body)
+           (guard (err ((match? err pattern)
+                          (match-body ((pattern () err)) () clause)) ...)
+             . body))))))
