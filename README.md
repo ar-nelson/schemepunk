@@ -213,6 +213,8 @@ escape code. Make sure to reset with `(reset-color)` after writing!
 Prints Scheme data and JSON in an indented, colorized format. Adapts to the
 terminal width.
 
+![Screenshot of pretty-printed Scheme source code](.readme-images/pretty-print.png)
+
 The internals of this library are complex and likely to change, but the most
 relevant functions are `write-debug` and `write-json`, which write Scheme data
 or JSON to `(current-output-port)`. `write-debug` is extremely useful as an
@@ -229,6 +231,8 @@ reworking its API, so it is not documented here.
 
 A unit test framework modeled after Javascript's [Mocha][mocha]. Not based on
 any SRFI.
+
+![Screenshot of unit test results](.readme-images/unit-test.png)
 
 Test suites are defined as `(test-suite <name> <tests>…)`, where `<tests>` is
 one or more `(test <name> <expressions>…)` clauses. Test suite files have the
