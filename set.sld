@@ -56,6 +56,7 @@
    bag->alist alist->bag)
 
   (cond-expand
+    (chicken (import (srfi 113)))
     ((or (library (scheme set))
          (library (srfi 113))
          (library (std srfi 113)))

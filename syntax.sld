@@ -10,6 +10,7 @@
           none-of
           compl
           dotimes
+          and-let*
           match
           match?
           match-lambda
@@ -22,6 +23,20 @@
           match-guard)
 
   (import (scheme base))
+
+  (cond-expand
+    ((or chicken (library (srfi 2)))
+       (import (srfi 2)))
+    (else
+       (begin
+         (define-syntax and-let*
+           (syntax-rules ()
+             ((_ () . body) (begin . body))
+             ((_ ((expr) . rest) . body)
+                (and expr (and-let* rest . body)))
+             ((_ ((name value) . rest) . body)
+                (let ((name value))
+                  (and name (and-let* rest . body)))))))))
 
   (begin
     (define-syntax λ

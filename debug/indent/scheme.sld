@@ -22,14 +22,18 @@
           (schemepunk debug indent))
 
   (cond-expand
-    ((library (srfi 99))
+    ((or chicken (library (srfi 99)))
        (import (only (srfi 99) record?
                                record-rtd
                                rtd-name
                                rtd-all-field-names
                                rtd-accessor)))
     (else
-       (begin (define (record? x) #f))))
+       (begin (define (record? _) #f)
+              (define-syntax record-rtd (syntax-rules () ((_ . _) #f)))
+              (define (rtd-name _) #f)
+              (define (rtd-all-field-names _) #f)
+              (define (rtd-accessor _ _) #f))))
 
   (begin
     (define color-scheme-list (make-parameter cyan))
@@ -98,25 +102,26 @@
         ((? number?)
            (color (color-scheme-number) (number->string form)))
         ((? record?)
-           (cond-expand
-             ((library (srfi 99))
-                (let* ((rtd (record-rtd form))
-                       (name (symbol->string (rtd-name rtd)))
-                       (fields (vector->list (rtd-all-field-names rtd))))
-                  (if (null? fields)
-                    (color (color-scheme-record) (string-append "#<" name ">"))
-                    (make-indent-group
-                      (color (color-scheme-record) (string-append "#<" name " "))
-                      (map (λ field
-                             (make-indent-group
-                               (color (color-scheme-record)
-                                 (string-append (symbol->string field) ":"))
-                               (list (form->indent
-                                       ((rtd-accessor rtd field) form)))
-                               #f))
-                           fields)
-                      (color (color-scheme-record) ">")))))
-             (else (error "not implemented"))))
+           (or
+             (and-let* ((rtd (record-rtd form))
+                        (name (symbol->string (rtd-name rtd)))
+                        (fields (vector->list (rtd-all-field-names rtd))))
+               (if (null? fields)
+                 (color (color-scheme-record) (string-append "#<" name ">"))
+                 (make-indent-group
+                   (color (color-scheme-record) (string-append "#<" name " "))
+                   (map (λ field
+                          (make-indent-group
+                            (color (color-scheme-record)
+                              (string-append (symbol->string field) ":"))
+                            (list (form->indent
+                                    ((rtd-accessor rtd field) form)))
+                            #f))
+                        fields)
+                   (color (color-scheme-record) ">"))))
+             (let1 str (open-output-string)
+               (write form str)
+               (color (color-scheme-special) (get-output-string str)))))
         (else
            (let1 str (open-output-string)
              (write form str)

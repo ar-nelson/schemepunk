@@ -23,7 +23,7 @@
     (assert-equal (string->json "\"foo\"") "foo")
     (assert-equal
       (string->json "\"foo \\\\\\/\\'\\\"\\n\\r\\t\\b\\v\\f\\u0020\"")
-      "foo \\/'\"\n\r\t\b\x0b;\x0c; ")
+      (string-append "foo \\/'\"\n\r\t\b" (string #\x0b #\x0c) " "))
     (assert-equal (string->json "\"={foo}\"") "={foo}"))
 
   (test "parses arrays"

@@ -60,6 +60,7 @@
           (schemepunk syntax))
 
   (cond-expand
+    (chicken (import (srfi 1)))
     ((library (scheme list)) (import (scheme list)))
     ((library (srfi 1)) (import (srfi 1)))
     ((library (std srfi 1)) (import (std srfi 1))))

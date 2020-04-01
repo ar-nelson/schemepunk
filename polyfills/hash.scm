@@ -4,10 +4,18 @@
       (car o)
       (if (eq? eq? eq-fn) hash-by-identity hash)))
 
+(define (hash-fn cmp)
+  (cond-expand
+    (chicken
+      (let ((hash (comparator-hash-function cmp)))
+        (lambda (x bound) (modulo (hash x) bound))))
+    (else
+      (comparator-hash-function cmp))))
+
 (define (make-hash-table x . o)
   (if (comparator? x)
       (%make-hash-table (comparator-equality-predicate x)
-                        (comparator-hash-function x))
+                        (hash-fn x))
       (%make-hash-table x (opt-hash x o))))
 
 (define (hash-table comparator . o)
@@ -54,7 +62,7 @@
   (if (comparator? x)
       (%alist->hash-table alist
                           (comparator-equality-predicate x)
-                          (comparator-hash-function x))
+                          (hash-fn x))
       (%alist->hash-table alist x (opt-hash x o))))
 
 (define hash-table-contains? hash-table-exists?)

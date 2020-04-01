@@ -19,6 +19,7 @@
           (schemepunk term-colors))
 
   (cond-expand
+    (chicken (import (only (chicken condition) condition? print-error-message)))
     (gauche (import (only (gauche base) report-error)))
     (chibi (import (only (chibi) print-exception)))
     (else))
@@ -44,24 +45,23 @@
            ;; They cannot be printed inside of a function or macro,
            ;; or (at least in Gauche) that will become part of the trace.
            (guard (err ((cond-expand
+                          (chicken (or (error-object? err) (condition? err)))
                           (gerbil (or (error-object? err) (exception? err)))
                           (else (error-object? err)))
                         (fail-test name
-                          (cond-expand
-                            (gauche
-                              (let ((str (open-output-string)))
-                                (report-error err str)
-                                (color red (get-output-string str))))
-                            (chibi
-                              (let ((str (open-output-string)))
+                          (let ((str (open-output-string)))
+                            (cond-expand
+                              (chicken
+                                (print-error-message err str))
+                              (gauche
+                                (report-error err str))
+                              (chibi
                                 (parameterize ((current-error-port str))
-                                  (print-exception err))
-                                (color red (get-output-string str))))
-                            (gerbil
-                              (let ((str (open-output-string)))
-                                (display-exception err str)
-                                (color red (get-output-string str))))
-                            (else err))))
+                                  (print-exception err)))
+                              (gerbil
+                                (display-exception err str))
+                              (else (display err str)))
+                            (color red (get-output-string str)))))
                        (#t (fail-test name err)))
                   (begin body ...
                          (pass-test name))))))

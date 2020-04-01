@@ -27,6 +27,7 @@
     reverse-list->vector)
 
   (cond-expand
+    (chicken (import (srfi 133)))
     ((library (scheme vector)) (import (scheme vector)))
     ((library (srfi 133)) (import (srfi 133)))
     ((library (std srfi 133)) (import (std srfi 133)))

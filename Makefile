@@ -1,10 +1,13 @@
-.PHONY: test-chibi test-gauche test-gerbil test-kawa test-larceny test test-all watch
+.PHONY: test-chibi test-chicken test-gauche test-gerbil test-kawa test-larceny test test-all watch
 
 schemepunk:
 	ln -s . schemepunk
 
 test-chibi: schemepunk
 	./scripts/test-chibi.sh "$$(./scripts/find-tests.sh)"
+
+test-chicken: schemepunk
+	./scripts/test-chicken.sh "$$(./scripts/find-tests.sh)"
 
 test-gauche: schemepunk
 	./scripts/test-gauche.sh "$$(./scripts/find-tests.sh)"

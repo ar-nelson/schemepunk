@@ -39,10 +39,14 @@
       ; but the bug is not present in the built-in (gauche base) library.
       (import (except (scheme hash-table) alist->hash-table)
               (only (gauche base) alist->hash-table)))
-    ((library (scheme hash-table)) (import (scheme hash-table)))
-    ((library (srfi 125)) (import (srfi 125)))
-    ((library (std srfi 125)) (import (std srfi 125)))
-    ((library (srfi 69))
+    ((and (not chicken) (or (library (scheme hash-table))
+                            (library (srfi 125))
+                            (library (std srfi 125))))
+       (cond-expand
+         ((library (scheme hash-table)) (import (scheme hash-table)))
+         ((library (srfi 125)) (import (srfi 125)))
+         ((library (std srfi 125)) (import (std srfi 125)))))
+    (else
        (import (scheme base)
                (except (schemepunk comparator) string-hash string-ci-hash)
                (rename (srfi 69)

@@ -29,6 +29,7 @@
           (scheme complex))
 
   (cond-expand
+    (chicken (import (srfi 128)))
     ((library (std srfi 128))
        ; Gerbil's make-vector-comparator is broken[1], so we patch it with our
        ; own implementation here.

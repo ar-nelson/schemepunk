@@ -14,11 +14,16 @@ Schemes that don't natively support this.
 
 ## Supported Schemes
 
+- [Chibi][chibi]
+- [Chicken][chicken]\*
 - [Gauche][gauche]
 - [Gerbil][gerbil]
-- [Chibi][chibi]
 - [Kawa][kawa]
 - [Larceny][larceny]
+
+\* Chicken requires these eggs: `r7rs`, `srfi-69`, `srfi-99`, `srfi-113`,
+`srfi-128`, `srfi-133`, and `ioctl`. (`ioctl` is only required on Unix-based
+OSes.)
 
 ## Features
 
@@ -284,6 +289,7 @@ Schemepunk also includes MIT/BSD-licensed code from the following authors:
 [kawa]: https://www.gnu.org/software/kawa/
 [gerbil]: https://cons.io/
 [larceny]: http://www.larcenists.org/
+[chicken]: http://call-cc.org/
 [srfi1]: https://srfi.schemers.org/srfi-1/
 [srfi113]: https://srfi.schemers.org/srfi-113/
 [srfi125]: https://srfi.schemers.org/srfi-125/
