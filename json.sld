@@ -302,10 +302,10 @@
               (let-values (((k v) (car+cdr (car xs))))
                 (write-char #\" port)
                 (write-string (escape-json-string k) port)
-                (write-string "\": " port)
+                (write-string "\":" port)
                 (%write-json% v port)
                 (unless (null? (cdr xs))
-                  (write-string ", " port)
+                  (write-string "," port)
                   (loop (cdr xs))))))
           (write-char #\} port))
         ((? list?)
@@ -314,10 +314,15 @@
             (let loop ((xs json))
               (%write-json% (car xs) port)
               (unless (null? (cdr xs))
-                (write-string ", " port)
+                (write-string "," port)
                 (loop (cdr xs)))))
           (write-char #\] port))
-        (else (write-string "<NOT JSON>" port))))
+        (else
+          (write-string "\"!! NOT JSON: " port)
+          (let1 str (open-output-string)
+            (write json str)
+            (-> str get-output-string escape-json-string (write-string port)))
+          (write-char #\" port))))
 
     (define write-json
       (case-lambda
