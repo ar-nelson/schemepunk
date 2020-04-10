@@ -21,9 +21,9 @@ Schemes that don't natively support this.
 - [Kawa][kawa]
 - [Larceny][larceny]
 
-\* Chicken requires these eggs: `r7rs`, `srfi-69`, `srfi-99`, `srfi-113`,
-`srfi-128`, `srfi-133`, and `ioctl`. (`ioctl` is only required on Unix-based
-OSes.)
+\* Chicken requires these eggs: `r7rs`, `utf8`, `srfi-69`, `srfi-99`,
+`srfi-113`, `srfi-128`, `srfi-133`, and `ioctl`. (`ioctl` is only required on
+Unix-based OSes.)
 
 ## Features
 

@@ -26,6 +26,9 @@
       (string-append "foo \\/'\"\n\r\t\b" (string #\x0b #\x0c) " "))
     (assert-equal (string->json "\"={foo}\"") "={foo}"))
 
+  (test "parses Unicode in strings"
+    (assert-equal (string->json "\"λ\"") "λ"))
+
   (test "parses arrays"
     (assert-equal (string->json "[]") '())
     (assert-equal (string->json "[1, 2, 3]") '(1 2 3))

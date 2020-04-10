@@ -23,7 +23,7 @@ test-larceny: schemepunk
 
 test: test-gauche
 
-test-all: test-chibi test-gauche test-gerbil test-kawa test-larceny
+test-all: test-chibi test-gauche test-gerbil test-kawa test-larceny test-chicken
 
 watch:
 	nodemon -e scm,sld --exec 'make test || exit 1'
