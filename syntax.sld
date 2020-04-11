@@ -6,6 +6,7 @@
           λ->
           λ->>
           let1
+          let1-values
           one-of
           none-of
           compl
@@ -26,17 +27,17 @@
 
   (cond-expand
     ((or chicken (library (srfi 2)))
-       (import (srfi 2)))
+      (import (srfi 2)))
     (else
-       (begin
-         (define-syntax and-let*
-           (syntax-rules ()
-             ((_ () . body) (begin . body))
-             ((_ ((expr) . rest) . body)
-                (and expr (and-let* rest . body)))
-             ((_ ((name value) . rest) . body)
-                (let ((name value))
-                  (and name (and-let* rest . body)))))))))
+      (begin
+        (define-syntax and-let*
+          (syntax-rules ()
+            ((_ () . body) (begin . body))
+            ((_ ((expr) . rest) . body)
+              (and expr (and-let* rest . body)))
+            ((_ ((name value) . rest) . body)
+              (let ((name value))
+                (and name (and-let* rest . body)))))))))
 
   (begin
     (define-syntax λ
@@ -48,47 +49,53 @@
       (syntax-rules ()
         ((-> x) x)
         ((-> x (fn . args) . rest)
-           (-> (fn x . args) . rest))
+          (-> (fn x . args) . rest))
         ((-> x fn . rest)
-           (-> (fn x) . rest))))
+          (-> (fn x) . rest))))
 
     (define-syntax ->>
       (syntax-rules ()
         ((->> x) x)
         ((->> x (fn args ...) . rest)
-           (->> (fn args ... x) . rest))
+          (->> (fn args ... x) . rest))
         ((->> x fn . rest)
-           (->> (fn x) . rest))))
+          (->> (fn x) . rest))))
 
     (define-syntax as->
       (syntax-rules ()
         ((as-> x name) x)
         ((as-> x name expr . rest)
-           (as-> (let ((name x)) expr) name . rest))))
+          (as-> (let ((name x)) expr) name . rest))))
 
     (define-syntax λ->
       (syntax-rules ()
         ((λ-> . rest)
-           (λ x (-> x . rest)))))
+          (λ x (-> x . rest)))))
 
     (define-syntax λ->>
       (syntax-rules ()
         ((λ->> . rest)
-           (λ x (->> x . rest)))))
+          (λ x (->> x . rest)))))
 
     (define-syntax let1
       (syntax-rules ()
         ((let1 name value . body) (let ((name value)) . body))))
 
+    (define-syntax let1-values
+      (syntax-rules ()
+        ((let1 names value . body) (let-values ((names value)) . body))))
+
     (define-syntax one-of
-      (syntax-rules (is)
+      (syntax-rules (is ?)
         ((one-of (is pred?)) pred?)
         ((one-of x)
-           (λ y (eqv? x y)))
+          (λ y (eqv? x y)))
         ((one-of (is pred?) . xs)
-           (λ y (or (pred? y) ((one-of . xs) y))))
+          (λ y (or (pred? y) ((one-of . xs) y))))
+        ((one-of (? pred?) . xs)
+          (λ y (or (pred? y) ((one-of . xs) y))))
         ((one-of x . xs)
-           (λ y (or (eqv? x y) ((one-of . xs) y))))))
+          (λ y (or (eqv? x y) ((one-of . xs) y))))))
 
     (define-syntax none-of
       (syntax-rules () ((none-of . xs) (compl (one-of . xs)))))
@@ -125,17 +132,17 @@
     (define-syntax match
       (syntax-rules (else)
         ((match subject (pattern . body) ... (else . else-clause))
-           (let1 var subject
-             (cond
-               ((match? var pattern) (match-body ((pattern () var)) () body)) ...
-               (else . else-clause))))
+          (let1 var subject
+            (cond
+              ((match? var pattern) (match-body var () pattern (begin . body))) ...
+              (else . else-clause))))
         ((match subject (pattern . body) ...)
-           (let1 var subject
-             (cond
-               ((match? var pattern) (match-body ((pattern () var)) () body)) ...
-               (else (error "match failed"
-                            var
-                            '(pattern ...))))))))
+          (let1 var subject
+            (cond
+              ((match? var pattern) (match-body var () pattern (begin . body))) ...
+              (else (error "match failed"
+                           var
+                           '(pattern ...))))))))
 
     (define-syntax match?
       (syntax-rules (? quote quasiquote unquote unquote-splicing and or not ___ …)
@@ -144,11 +151,11 @@
         ((_ subject `,x) (match? subject x))
         ((_ subject `(,@x)) (match? subject x))
         ((_ subject `(,@x . _))
-           (syntax-error ",@ pattern can only occur at the end of a list"))
+          (syntax-error ",@ pattern can only occur at the end of a list"))
         ((_ subject `(hd . tl))
-           (and (pair? subject)
-                (match? (car subject) `hd)
-                (match? (cdr subject) `tl)))
+          (and (pair? subject)
+               (match? (car subject) `hd)
+               (match? (cdr subject) `tl)))
         ((_ subject `value) (equal? subject 'value))
         ((_ subject (and x ...)) (and (match? subject x) ...))
         ((_ subject (or x ...)) (or (match? subject x) ...))
@@ -156,56 +163,52 @@
         ((_ subject (? pred? . _)) (pred? subject))
         ((_ subject (pattern …)) (match? subject (pattern ___)))
         ((_ subject (pattern ___))
-           (and (list? subject)
-                (let loop ((x subject))
-                  (or (null? x)
-                      (and (match? (car x) pattern) (loop (cdr x)))))))
+          (and (list? subject)
+               (let loop ((x subject))
+                 (or (null? x)
+                     (and (match? (car x) pattern) (loop (cdr x)))))))
         ((_ subject (hd . tl))
-           (and (pair? subject)
-                (match? (car subject) hd)
-                (match? (cdr subject) tl)))
+          (and (pair? subject)
+               (match? (car subject) hd)
+               (match? (cdr subject) tl)))
+        ((_ subject #(pat ...))
+          (and (vector? subject)
+               (match? (vector->list subject) (pat ...))))
         ((_ subject x)
-           ; This magic expression comes from Alex Shinn's match-simple.scm.
-           ; It tells symbols apart from other literals, in pure hygenic R7RS!
-           (let-syntax ((sym? (syntax-rules ()
-                                ((sym? x) #t)
-                                ((sym? y) (equal? subject x)))))
-             (sym? abracadabra)))))
+          ; This magic expression comes from Alex Shinn's match-simple.scm.
+          ; It tells symbols apart from other literals, in pure hygenic R7RS!
+          (let-syntax ((sym? (syntax-rules ()
+                               ((sym? x) #t)
+                               ((sym? y) (equal? subject x)))))
+            (sym? abracadabra)))))
 
     (define-syntax match-body
       (syntax-rules (? quote quasiquote unquote unquote-splicing and or not ___ …)
-        ((_ () () body) (begin . body))
-        ((_ () vars body) (let vars . body))
-        ((_ ((() . _) . rest) vars body) (match-body rest vars body))
-        ((_ (('x . _) . rest) vars body) (match-body rest vars body))
-        ((_ ((`,x . subject) . rest) vars body)
-           (match-body ((x . subject) . rest) vars body))
-        ((_ ((`(,@x) . subject) . rest) vars body)
-           (match-body ((x . subject) . rest) vars body))
-        ((_ ((`(hd . tl) outer inner) . rest) vars body)
-           (match-body ((`hd outer (car inner)) (`tl outer (cdr inner)) . rest)
-                       vars
-                       body))
-        ((_ ((`x . _) . rest) vars body) (match-body rest vars body))
-        ((_ (((? pred?) . _) . rest) vars body) (match-body rest vars body))
-        ((_ (((? pred? name) outer inner) . rest) vars body)
-           (match-body_ name outer inner rest vars body))
-        ((_ (((and xs ...) . subject) . rest) vars body)
-           (match-body ((xs . subject) ... . rest) vars body))
-        ((_ (((or xs ...) . subject) . rest) vars body)
-           (match-body ((xs . subject) ... . rest) vars body))
-        ((_ (((not x) . subject) . rest) vars body)
-           (match-body ((x . subject) . rest) vars body))
-        ((_ (((pattern ___) outer inner) . rest) vars body)
-           (match-body ((pattern ((x inner) . outer) x) . rest) vars body))
-        ((_ (((pattern …) outer inner) . rest) vars body)
-           (match-body ((pattern ((x inner) . outer) x) . rest) vars body))
-        ((_ (((hd . tl) outer inner) . rest) vars body)
-           (match-body ((hd outer (car inner)) (tl outer (cdr inner)) . rest)
-                       vars
-                       body))
-        ((_ ((name outer inner) . rest) vars body)
-           (match-body_ name outer inner rest vars body)))))
+        ((_ _ _ () body) body)
+        ((_ _ _ 'x body) body)
+        ((_ subject over `,x body) (match-body subject over x body))
+        ((_ subject over `(,@x) body) (match-body subject over x body))
+        ((_ subject over `(hd . tl) body)
+          (match-body (car subject) over `hd
+            (match-body (cdr subject) over `tl body)))
+        ((_ _ _ `x body) body)
+        ((_ _ _ (? _) body) body)
+        ((_ subject over (? _ name) body) (match-body-let subject over name body))
+        ((_ subject over (and pat ...) body)
+          (->> body (match-body subject over pat) ...))
+        ((_ subject over (or pat ...) body)
+          (->> body (match-body subject over pat) ...))
+        ((_ _ _ (not _) body) body)
+        ((_ subject over (pat ___) body)
+          (match-body ellipsis ((ellipsis subject) . over) pat body))
+        ((_ subject over (pat …) body)
+          (match-body ellipsis ((ellipsis subject) . over) pat body))
+        ((_ subject over (hd . tl) body)
+          (match-body (car subject) over hd
+            (match-body (cdr subject) over tl body)))
+        ((_ subject over #(pat ...) body)
+          (match-body (vector->list subject) over (pat ...) body))
+        ((_ subject over name body) (match-body-let subject over name body)))))
 
   ; Gerbil Scheme is a special case for this macro. It doesn't allow _ as
   ; a macro keyword[2], and it has inconsistent support for the let-syntax
@@ -222,29 +225,26 @@
     (gerbil
       (import (only (gerbil core) defrules syntax underscore? identifier?))
       (begin
-        (defrules match-body_ ()
-          ((_ x _ _ rest vars body) (underscore? (syntax x))
-             (match-body rest vars body))
-          ((_ x ((arg mapped) . outer) inner rest vars body) (identifier? (syntax x))
-             (match-body_ x outer (map (λ arg inner) mapped) rest vars body))
-          ((_ x () inner rest vars body) (identifier? (syntax x))
-             (match-body rest ((x inner) . vars) body))
-          ((_ _ _ _ rest vars body)
-             (match-body rest vars body)))))
+        (defrules match-body-let ()
+          ((_ _ _ x body) (underscore? (syntax x)) body)
+          ((_ subject ((arg mapped) . over) x body) (identifier? (syntax x))
+            (match-body-let (map (λ arg subject) mapped) over x body))
+          ((_ subject () x body) (identifier? (syntax x))
+            (let1 x subject body))
+          ((_ _ _ _ body) body))))
     (else
       (begin
-        (define-syntax match-body_
+        (define-syntax match-body-let
           (syntax-rules (_)
-            ((_ _ outer inner rest vars body)
-               (match-body rest vars body))
-            ((_ x ((arg mapped) . outer) inner rest vars body)
-               (match-body_ x outer (map (λ arg inner) mapped) rest vars body))
-            ((_ x () inner rest vars body)
-               (let-syntax
-                 ((sym? (syntax-rules ()
-                          ((sym? x) (match-body rest ((x inner) . vars) body))
-                          ((sym? y) (match-body rest vars body)))))
-                 (sym? abracadabra))))))))
+            ((_ subject over _ body) body)
+            ((_ subject ((arg mapped) . over) x body)
+              (match-body-let (map (λ arg subject) mapped) over x body))
+            ((_ subject () x body)
+              (let-syntax
+                ((sym? (syntax-rules ()
+                         ((sym? x) (let1 x subject body))
+                         ((sym? y) body))))
+                (sym? abracadabra))))))))
 
   (begin
     (define-syntax match-lambda
@@ -258,23 +258,26 @@
     (define-syntax matchλ
       (syntax-rules () ((_ . xs) (match-lambda . xs))))
 
+    (define-syntax match-let*
+      (syntax-rules ()
+        ((_ ((pat expr) . rest) . body)
+          (match-body expr () pat (match-let* rest . body)))
+        ((_ () . body)
+          (begin . body))))
+
     (define-syntax match-let
       (syntax-rules ()
-        ((_ ((pat expr)) . body)
-           (match expr (pat . body)))
-        ((_ ((pat expr) ...) . body)
-           (match (list expr ...) ((pat ...) . body)))
-        ((_ loop . rest)
-           (match-named-let loop () . rest))))
+        ((_ (vars ...) . body) (match-let* (vars ...) body))
+        ((_ loop . rest) (match-named-let loop () . rest))))
 
     (define-syntax match-named-let
       (syntax-rules ()
         ((_ loop ((pat expr var) ...) () . body)
-           (let loop ((var expr) ...)
-             (match-let ((pat var) ...)
-               . body)))
+          (let loop ((var expr) ...)
+            (match-let ((pat var) ...)
+              . body)))
         ((_ loop (v ...) ((pat expr) . rest) . body)
-           (match-named-let loop (v ... (pat expr tmp)) rest . body))))
+          (match-named-let loop (v ... (pat expr tmp)) rest . body))))
 
     (define-syntax match-letrec
       (syntax-rules ()
@@ -283,31 +286,24 @@
     (define-syntax match-letrec-helper
       (syntax-rules ()
         ((_ ((pat expr var) ...) () . body)
-           (letrec ((var expr) ...)
-             (match-let ((pat var) ...)
-               . body)))
+          (letrec ((var expr) ...)
+            (match-let ((pat var) ...)
+              . body)))
         ((_ (v ...) ((pat expr) . rest) . body)
-           (match-letrec-helper (v ... (pat expr tmp)) rest . body))))
-
-    (define-syntax match-let*
-      (syntax-rules ()
-        ((_ () . body)
-           (begin . body))
-        ((_ ((pat expr) . rest) . body)
-           (match expr (pat (match-let* rest . body))))))
+          (match-letrec-helper (v ... (pat expr tmp)) rest . body))))
 
     (define-syntax match-let1
       (syntax-rules ()
-        ((_ pat expr . body) (match expr (pat . body)))))
+        ((_ pat expr . body) (match-body expr () pat (begin . body)))))
 
     (define-syntax match-guard
       (syntax-rules (else)
         ((_ ((pattern . clause) ... (else . else-clause)) . body)
-           (guard (err ((match? err pattern)
-                          (match-body ((pattern () err)) () clause)) ...
-                       (else . else-clause))
-             . body))
+          (guard (err ((match? err pattern)
+                        (match-body err () pattern (begin . clause))) ...
+                      (else . else-clause))
+            . body))
         ((_ ((pattern . clause) ...) . body)
-           (guard (err ((match? err pattern)
-                          (match-body ((pattern () err)) () clause)) ...)
-             . body))))))
+          (guard (err ((match? err pattern)
+                        (match-body err () pattern (begin . clause))) ...)
+            . body))))))

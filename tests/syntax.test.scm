@@ -54,6 +54,24 @@
           (('foo a) a)
           ((a b 'bar) `(,a ,b))
           (('foo b c) `(,c ,b)))))
+    (test "match quasiquote"
+      (assert-equal
+        '(baz bar)
+        (match '(foo bar baz)
+          (`(foo ,b ,a) `(,a ,b)))))
+    (test "match vectors"
+      (assert-true
+        (match #()
+          (() #f)
+          (#() #t)
+          (else #f)))
+      (assert-equal 3
+        (match #(1 2 3)
+          ((x 2 3) x)
+          (#(1 x) x)
+          (#(x 2 3 4) x)
+          (#(1 2 x) x)
+          (else 'no-match))))
     (test "match numbers"
       (assert-true
         (match (+ 2 2)
