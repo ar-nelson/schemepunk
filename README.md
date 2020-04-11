@@ -133,16 +133,16 @@ Gerbil.
 Minimal JSON parser. Can encode and decode JSON to/from a simple Scheme
 representation:
 
-| JSON value         | Scheme representation          |
-| ------------------ | ------------------------------ |
-| `null`             | The symbol `null`              |
-| `true`             | The symbol `true`              |
-| `false`            | The symbol `false`             |
-| `3.14`             | `3.14`                         |
-| `"foo"`            | `"foo"`                        |
-| `[1, 2, 3]`        | `(1 2 3)`                      |
-| `{}`               | `(object)`                     |
-| `{"a": 1, "b": 2}` | `(object ("a" . 1) ("b" . 2))` |
+| JSON value         | Scheme representation   |
+| ------------------ | ----------------------- |
+| `null`             | The symbol `null`       |
+| `true`             | The symbol `true`       |
+| `false`            | The symbol `false`      |
+| `3.14`             | `3.14`                  |
+| `"foo"`            | `"foo"`                 |
+| `[1, 2, 3]`        | `#(1 2 3)`              |
+| `{}`               | `()`                    |
+| `{"a": 1, "b": 2}` | `(("a" . 1) ("b" . 2))` |
 
 - `(read-json <port>)` reads one JSON value from a port and returns it. `<port>`
   is optional.

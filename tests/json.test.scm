@@ -3,22 +3,23 @@
         (schemepunk json)
         (schemepunk test))
 
-(test-suite "JSON Parser"
-  (test "parses keywords"
+(test-suite "JSON Reader"
+  (test "reads keywords"
     (assert-equal (string->json "null") 'null)
     (assert-equal (string->json "true") 'true)
     (assert-equal (string->json "false") 'false))
 
-  (test "parses numbers"
+  (test "reads numbers"
     (assert-equal (string->json "0") 0)
     (assert-equal (string->json "0.1") 0.1)
     (assert-equal (string->json "1") 1)
     (assert-equal (string->json "1.5") 1.5)
     (assert-equal (string->json ".5") 0.5)
+    (assert-equal (string->json "-.5") -0.5)
     (assert-equal (string->json "-1") -1)
     (assert-equal (string->json "1e3") 1000.0))
 
-  (test "parses strings"
+  (test "reads strings"
     (assert-equal (string->json "\"\"") "")
     (assert-equal (string->json "\"foo\"") "foo")
     (assert-equal
@@ -26,31 +27,59 @@
       (string-append "foo \\/'\"\n\r\t\b" (string #\x0b #\x0c) " "))
     (assert-equal (string->json "\"={foo}\"") "={foo}"))
 
-  (test "parses Unicode in strings"
+  (test "reads Unicode in strings"
     (assert-equal (string->json "\"λ\"") "λ"))
 
-  (test "parses arrays"
-    (assert-equal (string->json "[]") '())
-    (assert-equal (string->json "[1, 2, 3]") '(1 2 3))
+  (test "reads arrays"
+    (assert-equal (string->json "[]") #())
+    (assert-equal (string->json "[1, 2, 3]") #(1 2 3))
     (assert-equal
       (string->json "[[1, 2] ,[true, \"]foo[\"], [[]]]")
-      '((1 2) (true "]foo[") (()))))
+      #(#(1 2) #(true "]foo[") #(#()))))
 
-  (test "parses objects"
-    (assert-equal (string->json "{}") '(object))
+  (test "reads objects"
+    (assert-equal (string->json "{}") '())
     (assert-equal (string->json "{\"a\": 1, \"b\": 2, \"c\": 3}")
-                  '(object ("c" . 3) ("b" . 2) ("a" . 1))))
+                  '(("c" . 3) ("b" . 2) ("a" . 1))))
 
-  (test "parses nested objects"
+  (test "reads nested objects"
     (assert-equal (string->json "{\"a\":{},\"b\":{}}")
-                  '(object ("b" . (object)) ("a" . (object))))
+                  '(("b" . ()) ("a" . ())))
     (assert-equal (string->json "{\"a\":{\"b\":\"c\"}}")
-                  '(object ("a" . (object ("b" . "c")))))
+                  '(("a" . (("b" . "c")))))
     (assert-equal (string->json "{\"a\":{},\"b\":{\"\":\"foo\"},\"c\":{\"d\":{\"e\":\"f\"}}}")
-                  '(object ("c" . (object ("d" . (object ("e" . "f")))))
-                           ("b" . (object ("" . "foo")))
-                           ("a" . (object)))))
+                  '(("c" . (("d" . (("e" . "f")))))
+                    ("b" . (("" . "foo")))
+                    ("a" . ()))))
 
-  (test "parses nested arrays and objects"
+  (test "reads nested arrays and objects"
     (assert-equal (string->json "[[{\"\":[{\"\":[]}]}]]")
-                  '(((object ("" . ((object ("" . ()))))))))))
+                  #(#((("" . #((("" . #()))))))))))
+
+(test-suite "JSON Writer"
+  (test "writes primitives"
+    (assert-equal (json->string 'null) "null")
+    (assert-equal (json->string 'false) "false")
+    (assert-equal (json->string 'true) "true")
+    (assert-equal (json->string 91) "91")
+    (assert-equal (json->string "foo") "\"foo\""))
+
+  (test "writes floats in a consistent representation"
+    (assert-equal (json->string 1.5) "1.5")
+    (assert-equal (json->string 0.01) ".01")
+    (assert-equal (json->string -0.1) "-.1")
+    (assert-equal (json->string 1/2) ".5"))
+
+  (test "writes strings with escapes"
+    (assert-equal (json->string (string-append "foo \\/'\"\n\r\t\b" (string #\x0b #\x0c))) 
+                  "\"foo \\\\/'\\\"\\n\\r\\t\\b\\v\\f\""))
+
+  (test "writes arrays"
+    (assert-equal (json->string #()) "[]")
+    (assert-equal (json->string #(1)) "[1]")
+    (assert-equal (json->string #(1 2 3)) "[1,2,3]")
+    (assert-equal (json->string #(#(#(1)))) "[[[1]]]"))
+
+  (test "writes objects"
+    (assert-equal (json->string '()) "{}")
+    (assert-equal (json->string '(("foo" . "bar"))) "{\"foo\":\"bar\"}")))

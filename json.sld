@@ -13,11 +13,11 @@
 
   (import (scheme base)
           (scheme char)
-          (scheme case-lambda)
           (scheme read)
           (scheme write)
           (schemepunk syntax)
-          (schemepunk list))
+          (schemepunk list)
+          (schemepunk vector))
 
   (begin
     ;; stack is a list of booleans, where #t = array, #f = object
@@ -32,10 +32,9 @@
     (define (make-json-context)
       (%make-json-context% '() 'value -1))
 
-    (define read-json-event
-      (case-lambda
-        ((ctx port) (%read-json-event% ctx port))
-        ((ctx) (%read-json-event% ctx (current-input-port)))))
+    (define (read-json-event ctx . args)
+      (%read-json-event% ctx
+        (match args ((port) port) (() (current-input-port)))))
 
     (define (next-char! ctx port)
       (set-json-context-pos! ctx
@@ -233,46 +232,47 @@
                   (values 'number (get-output-string str))
                   (values 'error "dot or minus with no digits")))))))
 
-    (define (flip pair)
-      (cons (cdr pair) (car pair)))
-
-    (define read-json
-      (case-lambda
-        ((port)
-           (define ctx (make-json-context))
-           (let loop ((current #f) (stack '()))
-             (let-values (((event value) (%read-json-event% ctx port)))
-               (case event
-                 ((array-start object-start)
-                    (loop '() (cons current stack)))
-                 ((array-end)
-                    (loop (cons (reverse current) (car stack)) (cdr stack)))
-                 ((object-end)
-                    (if (null? current)
-                        (loop (cons '(object) (car stack)) (cdr stack))
-                        (loop `((object ,(flip current) . ,(car stack))
-                               . ,(cadr stack))
-                              (cddr stack))))
-                 ((key)
-                    (loop value
-                      (if (null? current)
-                          (cons current stack)
-                          `((,(flip current) . ,(car stack)) ,@(cdr stack)))))
-                 ((string) (loop (cons value current) stack))
-                 ((number) (loop (cons (string->number value) current) stack))
-                 ((boolean)
-                    (loop (cons (if value 'true 'false) current) stack))
-                 ((null) (loop (cons 'null current) stack))
-                 ((done) (car current))
-                 ((error) (error (string-append "JSON parser (char "
-                                                (number->string
-                                                  (json-context-pos ctx))
-                                                "): "
-                                                value)))))))
-        (() (read-json (current-input-port)))))
+    (define (read-json . args)
+      (define port (match args ((x) x) (() (current-input-port))))
+      (define ctx (make-json-context))
+      (let loop ((current #f) (stack '()))
+        (let1-values (event value) (%read-json-event% ctx port)
+          (case event
+            ((array-start object-start)
+              (loop '() (cons current stack)))
+            ((key) (loop value (cons current stack)))
+            ((done) (error "EOF while parsing JSON"))
+            ((error)
+              (error (string-append "JSON parser (char "
+                                    (number->string (json-context-pos ctx))
+                                    "): "
+                                    value)))
+            (else
+              (let ((result (case event
+                              ((array-end) (reverse-list->vector current))
+                              ((object-end) current)
+                              ((string) value)
+                              ((number) (string->number value))
+                              ((boolean) (if value 'true 'false))
+                              ((null) 'null)))
+                    (new-current (case event
+                                   ((array-end object-end) (car stack))
+                                   (else current)))
+                    (new-stack (case event
+                                 ((array-end object-end) (cdr stack))
+                                 (else stack))))
+                (cond
+                  ((not new-current) result)
+                  ((string? new-current)
+                    (loop `((,new-current . ,result) ,@(car new-stack))
+                          (cdr new-stack)))
+                  (else (loop (cons result new-current) new-stack)))))))))
 
     (define (string->json str)
       (read-json (open-input-string str)))
+
+    (define (alist? xs)
+      (and (list? xs) (every (λ x (and (pair? x) (string? (car x)))) xs)))
 
     (define (%write-json% json port)
       (match json
@@ -281,42 +281,49 @@
         ('false (write-string "false" port))
         ((? number?)
           (if (integer? json)
-              (write (exact json) port)
-              (let1 str (number->string (inexact json))
-                (write-string
-                  ; Remove the leaving 0 from 0.x decimal numbers.
-                  ; This makes the output format consistent across Schemes.
-                  ; (Gauche and Chibi include the 0, but Gambit drops it.)
-                  (if (eqv? #\0 (string-ref str 0))
-                      (substring str 1 (string-length str))
-                      str)
-                  port))))
+            (write (exact json) port)
+            (let1 str (number->string (inexact json))
+              (write-string
+                ; Remove the leaving 0 from 0.x decimal numbers.
+                ; This makes the output format consistent across Schemes.
+                ; (Gauche and Chibi include the 0, but Gambit drops it.)
+                (cond
+                  ((eqv? #\0 (string-ref str 0))
+                    (substring str 1 (string-length str)))
+                  ((and (eqv? #\- (string-ref str 0))
+                        (eqv? #\0 (string-ref str 1))
+                    (string-append "-"
+                      (substring str 2 (string-length str)))))
+                  (else str))
+                port))))
         ((? string?)
           (write-char #\" port)
           (write-string (escape-json-string json) port)
           (write-char #\" port))
-        (('object . pairs)
+        ((? vector?)
+          (write-char #\[ port)
+          (let1 first #t
+            (vector-for-each
+              (λ x (if first (set! first #f) (write-char #\, port))
+                   (%write-json% x port))
+              json))
+          (write-char #\] port))
+        ((? alist?)
           (write-char #\{ port)
-          (unless (null? pairs)
-            (let loop ((xs pairs))
+          (unless (null? json)
+            (let loop ((xs json))
               (let-values (((k v) (car+cdr (car xs))))
                 (write-char #\" port)
                 (write-string (escape-json-string k) port)
                 (write-string "\":" port)
                 (%write-json% v port)
                 (unless (null? (cdr xs))
-                  (write-string "," port)
+                  (write-char #\, port)
                   (loop (cdr xs))))))
           (write-char #\} port))
         ((? list?)
-          (write-char #\[ port)
-          (unless (null? json)
-            (let loop ((xs json))
-              (%write-json% (car xs) port)
-              (unless (null? (cdr xs))
-                (write-string "," port)
-                (loop (cdr xs)))))
-          (write-char #\] port))
+          ; Handle non-object lists, just in case we get non-JSON data.
+          (%write-json% (list->vector json) port))
         (else
           (write-string "\"!! NOT JSON: " port)
           (let1 str (open-output-string)
@@ -324,10 +331,8 @@
             (-> str get-output-string escape-json-string (write-string port)))
           (write-char #\" port))))
 
-    (define write-json
-      (case-lambda
-        ((json port) (%write-json% json port))
-        ((json) (%write-json% json (current-output-port)))))
+    (define (write-json json . args)
+      (%write-json% json (match args ((port) port) (() (current-input-port)))))
 
     (define (json->string json)
       (define str (open-output-string))
@@ -340,6 +345,11 @@
         (λ c (case c
           ((#\" #\\) (write-string (string #\\ c) out))
           ((#\newline) (write-string "\\n" out))
+          ((#\return) (write-string "\\r" out))
+          ((#\tab) (write-string "\\t" out))
+          ((#\backspace) (write-string "\\b" out))
+          ((#\x0b) (write-string "\\v" out))
+          ((#\x0c) (write-string "\\f" out))
           (else (write-char c out))))
         str)
       (get-output-string out))))
