@@ -121,7 +121,7 @@
            (make-report test
              (cond
                ((pair? (cddr err))
-                  (make-paragraph "Expected {0} but got {1}" (cadr err) (caddr err)))
+                  (make-paragraph "Expected {0} but got {1}" (caddr err) (cadr err)))
                ((string? (car err))
                   (make-paragraph (car err)))
                ((or (colored-text? (car err)) (indent-group? (car err)))
