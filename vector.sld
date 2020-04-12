@@ -24,7 +24,11 @@
     vector-unfold! vector-unfold-right!
 
     reverse-vector->list
-    reverse-list->vector)
+    reverse-list->vector
+
+    vector-filter)
+
+  (import (scheme base))
 
   (cond-expand
     (chicken (import (srfi 133)))
@@ -33,4 +37,11 @@
     ((library (std srfi 133)) (import (std srfi 133)))
     (else
       (import (scheme base))
-      (include "polyfills/vector.scm"))))
+      (include "polyfills/vector.scm")))
+
+  (begin
+    (define (vector-filter pred? vec)
+      (define-values (partitioned i) (vector-partition pred? vec))
+      (cond
+        ((= i (vector-length vec)) vec)
+        (else (vector-copy partitioned 0 i))))))
