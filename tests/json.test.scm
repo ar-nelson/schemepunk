@@ -35,7 +35,8 @@
     (assert-equal (string->json "[1, 2, 3]") #(1 2 3))
     (assert-equal
       (string->json "[[1, 2] ,[true, \"]foo[\"], [[]]]")
-      #(#(1 2) #(true "]foo[") #(#()))))
+      ; Use vector instead of #() because of a Sagittarius bug
+      (vector #(1 2) (vector 'true "]foo[") #(#()))))
 
   (test "reads objects"
     (assert-equal (string->json "{}") '())
@@ -71,7 +72,7 @@
     (assert-equal (json->string 1/2) ".5"))
 
   (test "writes strings with escapes"
-    (assert-equal (json->string (string-append "foo \\/'\"\n\r\t\b" (string #\x0b #\x0c))) 
+    (assert-equal (json->string (string-append "foo \\/'\"\n\r\t\b" (string #\x0b #\x0c)))
                   "\"foo \\\\/'\\\"\\n\\r\\t\\b\\v\\f\""))
 
   (test "writes arrays"

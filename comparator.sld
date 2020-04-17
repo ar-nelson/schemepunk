@@ -29,49 +29,29 @@
           (scheme complex))
 
   (cond-expand
-    (chicken (import (srfi 128)))
-    ((library (std srfi 128))
-       ; Gerbil's make-vector-comparator is broken[1], so we patch it with our
-       ; own implementation here.
-       ;
-       ; [1]: https://github.com/vyzo/gerbil/issues/425
-       (import (rename (std srfi 128)
-                       (make-vector-comparator %make-vector-comparator%)))
-
-       (begin
-         (define (make-vector-comparator element-comparator type-test length ref)
-           (define original-comparator
-             (%make-vector-comparator% element-comparator type-test length ref))
-           (make-comparator
-             (comparator-type-test-predicate original-comparator)
-             (make-vector=? element-comparator type-test length ref)
-             (comparator-ordering-predicate original-comparator)
-             (comparator-hash-function original-comparator)))
-
-         (define (make-vector=? element-comparator type-test length ref)
-            (lambda (a b)
-              (and
-                (= (length a) (length b))
-                (let ((elem=? (comparator-equality-predicate element-comparator))
-                      (len (length b)))
-                  (let loop ((n 0))
-                    (cond
-                      ((= n len) #t)
-                      ((elem=? (ref a n) (ref b n)) (loop (+ n 1)))
-                      (else #f)))))))))
-    ((library (scheme comparator)) (import (scheme comparator)))
-    ((library (srfi 128)) (import (srfi 128)))
+    ((or chicken chibi larceny) (import (srfi 128)))
+    ((library (scheme comparator))
+      (import (except (scheme comparator) make-pair-comparator
+                                          make-list-comparator
+                                          make-vector-comparator))
+      (include "polyfills/128.universals.scm"))
+    ((library (srfi 128))
+      (import (except (srfi 128) make-pair-comparator
+                                 make-list-comparator
+                                 make-vector-comparator))
+      (include "polyfills/128.universals.scm"))
     (else
       (cond-expand
         ((library (srfi 126))
-           (import (only (srfi 126) equal-hash string-hash string-ci-hash)))
+          (import (only (srfi 126) equal-hash string-hash string-ci-hash)))
         ((library (srfi 69))
-           (import (rename (only (srfi 69) hash-by-identity)
-                           (hash-by-identity equal-hash))
-                   (only (srfi 69) string-hash string-ci-hash))))
+          (import (rename (only (srfi 69) hash-by-identity)
+                          (hash-by-identity equal-hash))
+                  (only (srfi 69) string-hash string-ci-hash))))
 
-        (include "polyfills/128.body1.scm")
-        (include "polyfills/128.body2.scm")))
+      (include "polyfills/128.body1.scm")
+      (include "polyfills/128.universals.scm")
+      (include "polyfills/128.body2.scm")))
 
   (begin
     (define-syntax hash-lambda

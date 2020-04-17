@@ -83,8 +83,16 @@
                          (symbol<? (predicate-name x) (predicate-name y)))))
         (hash-lambda (x) (+ (symbol-hash (predicate-name x)) (predicate-arity x)))))
 
+    (define value-comparator
+      (let1 default (make-default-comparator)
+        (make-comparator
+          (λ _ #t)
+          eqv?
+          (comparator-ordering-predicate default)
+          (comparator-hash-function default))))
+
     (define tuple-comparator
-      (make-vector-comparator (make-eq-comparator) vector? vector-length vector-ref))
+      (make-vector-comparator value-comparator vector? vector-length vector-ref))
 
     (define (make-fact-store)
       (make-multimap predicate-comparator tuple-comparator))

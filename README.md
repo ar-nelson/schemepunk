@@ -20,6 +20,7 @@ Schemes that don't natively support this.
 - [Gerbil][gerbil]
 - [Kawa][kawa]
 - [Larceny][larceny]
+- [Sagittarius][sagittarius]
 
 \* Chicken requires these eggs: `r7rs`, `utf8`, `srfi-69`, `srfi-99`,
 `srfi-113`, `srfi-128`, `srfi-133`, and `ioctl`. (`ioctl` is only required on
@@ -290,6 +291,7 @@ Schemepunk also includes MIT/BSD-licensed code from the following authors:
 [gerbil]: https://cons.io/
 [larceny]: http://www.larcenists.org/
 [chicken]: http://call-cc.org/
+[sagittarius]: https://bitbucket.org/ktakashi/sagittarius-scheme/wiki/Home
 [srfi1]: https://srfi.schemers.org/srfi-1/
 [srfi113]: https://srfi.schemers.org/srfi-113/
 [srfi125]: https://srfi.schemers.org/srfi-125/
