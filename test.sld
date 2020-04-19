@@ -14,15 +14,78 @@
           (scheme write)
           (scheme process-context)
           (scheme cxr)
+          (schemepunk syntax)
           (schemepunk debug)
           (schemepunk debug indent)
           (schemepunk term-colors))
 
   (cond-expand
-    (chicken (import (only (chicken condition) condition? print-error-message)))
-    (gauche (import (only (gauche base) report-error)))
-    (chibi (import (only (chibi) print-exception)))
-    (else))
+    (chicken
+      (import (only (chicken condition) condition? print-error-message))
+      (begin
+        (define (test-error? e) (or (error-object? e) (condition? e)))
+        (define write-test-error print-error-message)))
+    (gauche
+      (import (only (gauche base) report-error))
+      (begin
+        (define test-error? error-object?)
+        (define write-test-error report-error)))
+    (chibi
+      (import (only (chibi) print-exception))
+      (begin
+        (define test-error? error-object?)
+        (define (write-test-error err port)
+          (parameterize ((current-error-port port))
+            (print-exception err)))))
+    (gerbil
+      (import (only (gerbil core) exception? error-message error-irritants error-trace))
+      (begin
+        (define (test-error? e) (or (error-object? e) (exception? e)))
+        (define (write-test-error err port)
+          (format port "Test raised error:~%~%~a~%message: ~a~%irritants: ~a~%~a"
+              err
+              (error-message err)
+              (error-irritants err)
+              (error-trace err)))))
+    (kawa
+      (import (only (kawa reflect) instance?)
+              (class java.lang Exception))
+      (begin
+        (define (test-error? e) (or (error-object? e) (instance? e Exception)))
+        (define (write-test-error err port)
+          (format port "Test raised error:~%~%")
+          (if (error-object? err)
+            (format port "~a~%message: ~a~%irritants: ~a"
+              err
+              (error-object-message err)
+              (error-object-irritants err))
+            (err:printStackTrace port)))))
+    ((library (rnrs conditions))
+      (import (rnrs conditions))
+      (begin
+        (define (test-error? e) (or (error-object? e) (condition? e)))
+        (define (write-test-error err port)
+          (format port "Test raised error:~%~%~a" err)
+          (cond
+            ((condition? err)
+              (when (who-condition? err)
+                (format port "~%who: ~a" (condition-who err)))
+              (when (message-condition? err)
+                (format port "~%message: ~a" (condition-message err)))
+              (when (irritants-condition? err)
+                (format port "~%irritants: ~a" (condition-irritants err))))
+            ((error-object? err)
+              (format port "~%message: ~a~%irritants: ~a"
+                (error-object-message err)
+                (error-object-irritants err)))))))
+    (else
+      (begin
+        (define test-error? error-object?)
+        (define (write-test-error err port)
+          (format port "Test raised error:~%~%~a~%message: ~a~%irritants: ~a"
+            err
+            (error-object-message err)
+            (error-object-irritants err))))))
 
   (begin
     (define passed-count 0)
@@ -41,27 +104,11 @@
     (define-syntax test
       (syntax-rules ()
         ((test name body ...)
-           ;; Error stack traces must be printed directly here.
-           ;; They cannot be printed inside of a function or macro,
-           ;; or (at least in Gauche) that will become part of the trace.
-           (guard (err ((cond-expand
-                          (chicken (or (error-object? err) (condition? err)))
-                          (gerbil (or (error-object? err) (exception? err)))
-                          (else (error-object? err)))
-                        (fail-test name
-                          (let ((str (open-output-string)))
-                            (cond-expand
-                              (chicken
-                                (print-error-message err str))
-                              (gauche
-                                (report-error err str))
-                              (chibi
-                                (parameterize ((current-error-port str))
-                                  (print-exception err)))
-                              (gerbil
-                                (display-exception err str))
-                              (else (display err str)))
-                            (color red (get-output-string str)))))
+           (guard (err ((test-error? err)
+                         (fail-test name
+                           (let ((str (open-output-string)))
+                             (write-test-error err str)
+                             (color red (get-output-string str)))))
                        (#t (fail-test name err)))
                   (begin body ...
                          (pass-test name))))))
@@ -122,12 +169,12 @@
              (cond
                ((pair? (cddr err))
                   (make-paragraph "Expected {0} but got {1}" (caddr err) (cadr err)))
-               ((string? (car err))
-                  (make-paragraph (car err)))
-               ((or (colored-text? (car err)) (indent-group? (car err)))
-                  (car err))
+               ((string? (cadr err))
+                  (make-paragraph (cadr err)))
+               ((or (colored-text? (cadr err)) (indent-group? (cadr err)))
+                  (cadr err))
                (else
-                  (form->indent (car err))))))
+                  (form->indent (cadr err))))))
         ((or (colored-text? err) (indent-group? err))
           (make-report test err))
         (else

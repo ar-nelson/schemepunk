@@ -16,7 +16,7 @@
        (pair? clause)
        (case (car clause)
          ((only except prefix rename) (get-import (cadr clause)))
-         ((std scheme srfi rnrs r6rs chibi chicken gauche gerbil kawa text ioctl) #f)
+         ((std scheme srfi rnrs r6rs chibi chicken gauche gerbil kawa class text ioctl) #f)
          (else clause))))
 
 (define (library-imports lib imports)
