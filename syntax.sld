@@ -12,6 +12,9 @@
           compl
           dotimes
           and-let*
+          cut
+          cute
+          format
           match
           match?
           match-lambda
@@ -23,7 +26,9 @@
           match-let1
           match-guard)
 
-  (import (scheme base))
+  (import (scheme base)
+          (scheme cxr)
+          (scheme write))
 
   (cond-expand
     ((or chicken (library (srfi 2)))
@@ -38,6 +43,89 @@
             ((_ ((name value) . rest) . body)
               (let ((name value))
                 (and name (and-let* rest . body)))))))))
+
+  (cond-expand
+    ((or chicken (library (srfi 26)))
+      (import (srfi 26)))
+    (else
+      (begin
+        (define-syntax %cut%
+          (syntax-rules (<> <...>)
+            ((_ () params call)
+              (lambda params call))
+            ((_ (<...>) (params ...) (callee . args))
+              (lambda (params ... . rest-slot)
+                (apply callee (append (list . args) rest-slot))))
+            ((_ (<> . xs) (params ...) (call ...))
+              (%cut% xs (params ... slot) (call ... slot)))
+            ((_ (x . xs) params (call ...))
+              (%cut% xs params (call ... x)))))
+
+        (define-syntax cut
+          (syntax-rules ()
+            ((_ . xs) (%cut% xs () ()))))
+
+        (define-syntax %cute%
+          (syntax-rules (<> <...>)
+            ((_ () pre-eval params call)
+              (let pre-eval (lambda params call)))
+            ((_ (<...>) pre-eval (params ...) (callee . args))
+              (let pre-eval
+                (lambda (params ... . rest-slot)
+                  (apply callee (append (list . args) rest-slot)))))
+            ((_ (<> . xs) pre-eval (params ...) (call ...))
+              (%cute% xs pre-eval (params ... slot) (call ... slot)))
+            ((_ (x . xs) pre-eval params (call ...))
+              (%cute% xs ((evaluated x) . pre-eval) params (call ... evaluated)))))
+
+        (define-syntax cute
+          (syntax-rules ()
+            ((_ . xs) (%cute% xs () () ())))))))
+
+  (cond-expand
+    (kawa
+      (import (only (kawa base) format)))
+    ((or gerbil larceny)
+      (cond-expand
+        (gerbil (import (only (std format) fprintf)))
+        (larceny (import (rename (srfi 28) (format fprintf)))))
+      (begin
+        (define (format destination . rest)
+          (case destination
+            ((#t) (apply fprintf (cons (current-output-port) rest)))
+            ((#f) (let ((str (open-output-string)))
+                    (apply fprintf (cons str rest))
+                    (get-output-string str)))
+            (else (apply fprintf (cons destination rest)))))))
+    ((or chicken (library (srfi 28)))
+      (import (srfi 28)))
+    (else
+      (begin
+        (define (format destination format-string . params)
+          (define port (case destination
+                         ((#t) (current-output-port))
+                         ((#f) (open-output-string))
+                         (else destination)))
+          (define escape? #f)
+          (string-for-each
+            (lambda (c)
+              (if escape?
+                (begin
+                  (set! escape? #f)
+                  (case c
+                    ((#\a #\A) (display (car params) port)
+                               (set! params (cdr params)))
+                    ((#\s #\S) (write (car params) port)
+                               (set! params (cdr params)))
+                    ((#\%) (newline port))
+                    ((#\~) (write-char #\~ port))
+                    (else (write-char #\~ port)
+                          (write-char c port))))
+                (case c
+                  ((#\~) (set! escape? #t))
+                  (else (write-char c port)))))
+            format-string)
+          (if destination #f (get-output-string port))))))
 
   (begin
     (define-syntax λ

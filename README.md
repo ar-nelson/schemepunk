@@ -33,16 +33,19 @@ Unix-based OSes.)
 | SRFI           | Module                    | Description                  |
 | -------------- | ------------------------- | ---------------------------- |
 | [1][srfi1]     | `(schemepunk list)`       | List library *(plus extras)* |
+| [2][srfi2]     | `(schemepunk syntax)`     | `and-let*`                   |
+| [26][srfi26]   | `(schemepunk syntax)`     | `cut` and `cute`             |
+| [28][srfi28]   | `(schemepunk syntax)`     | `format`                     |
 | [113][srfi113] | `(schemepunk set)`        | Sets and bags                |
 | [125][srfi125] | `(schemepunk hash-table)` | Hash tables                  |
 | [128][srfi128] | `(schemepunk comparator)` | Comparators                  |
 | [132][srfi132] | `(schemepunk sort)`       | Sorting                      |
 | [133][srfi133] | `(schemepunk vector)`     | Vector library               |
 
-These modules are aliases for several R7RS Large libraries, along with
-implementations of these libraries for Schemes that don't provide them by
-default. The implementations are in the `polyfills` directory; they are copied
-from either the SRFI documents or Chibi Scheme.
+These modules are aliases for several common SRFIs and R7RS Large libraries,
+along with implementations of these libraries for Schemes that don't provide
+them by default. The implementations are in the `polyfills` directory; they are
+copied from either the SRFI documents or Chibi Scheme.
 
 `(schemepunk list)` is a special case. Because practically every Scheme
 implements SRFI 1, Schemepunk doesn't polyfill it, so `(schemepunk list)` is
@@ -293,6 +296,9 @@ Schemepunk also includes MIT/BSD-licensed code from the following authors:
 [chicken]: http://call-cc.org/
 [sagittarius]: https://bitbucket.org/ktakashi/sagittarius-scheme/wiki/Home
 [srfi1]: https://srfi.schemers.org/srfi-1/
+[srfi2]: https://srfi.schemers.org/srfi-2/
+[srfi26]: https://srfi.schemers.org/srfi-26/
+[srfi28]: https://srfi.schemers.org/srfi-28/
 [srfi113]: https://srfi.schemers.org/srfi-113/
 [srfi125]: https://srfi.schemers.org/srfi-125/
 [srfi128]: https://srfi.schemers.org/srfi-128/

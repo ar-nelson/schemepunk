@@ -35,6 +35,30 @@
     (assert-true ((one-of 5 (is zero?)) 5))
     (assert-false ((one-of 5 (is zero?)) 3)))
 
+  (test "cut"
+    (assert-eqv ((cut + 2 <>) 3) 5)
+    (assert-eqv ((cut / <> 2 <>) 30 5) 3)
+    (assert-eqv ((cut <> 3 <>) - 1) 2)
+    (assert-eqv ((cut + <> 1 <...>) 2 3 4) 10))
+
+  (test "cute"
+    (let* ((side-effects '())
+           (cute1 (cute cons <> (begin (set! side-effects `(foo ,@side-effects)) '(2 3))))
+           (cute2 (cute cons <> side-effects)))
+      (assert-equal (cute1 1) '(1 2 3))
+      (assert-equal (cute1 5) '(5 2 3))
+      (assert-equal (cute2 'bar) '(bar foo))
+      (assert-equal side-effects '(foo))
+      (assert-eqv ((cute + <> 1 <...>) 2 3 4) 10)))
+
+  (test "format"
+    (assert-equal (format #f "foo") "foo")
+    (assert-equal (format #f "foo ~a ~s" "bar" "baz") "foo bar \"baz\"")
+    (assert-equal (format #f "~~~%") "~\n")
+    (parameterize ((current-output-port (open-output-string)))
+      (format #t "1 ~a ~s" 2 3)
+      (assert-equal (get-output-string (current-output-port)) "1 2 3")))
+
   (test-suite "Pattern Matching"
     (test "match quoted symbols"
       (assert-eqv
