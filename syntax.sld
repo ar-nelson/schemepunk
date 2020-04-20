@@ -15,6 +15,7 @@
           cut
           cute
           format
+          assume
           match
           match?
           match-lambda
@@ -126,6 +127,31 @@
                   (else (write-char c port)))))
             format-string)
           (if destination #f (get-output-string port))))))
+
+  (cond-expand
+    (chicken
+      (import (only (chicken base) assert))
+      (begin
+        (define-syntax assume
+          (syntax-rules ()
+            ((_ ok?) (assert ok?))
+            ((_ ok? msg . _) (assert ok? msg))))))
+    ((library (srfi 145))
+      (import (srfi 145)))
+    ((library (std srfi 145))
+      (import (std srfi 145)))
+    ((library (rnrs))
+      (import (only (rnrs) assert))
+      (begin
+        (define-syntax assume
+          ((_ ok? . _) (assert ok?)))))
+    (else
+      (begin
+        (define-syntax assume
+          (syntax-rules ()
+            ((_ ok? . msgs)
+              (unless ok?
+                (error "invalid assumption" (list 'ok? . msgs)))))))))
 
   (begin
     (define-syntax λ

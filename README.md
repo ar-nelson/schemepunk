@@ -41,6 +41,7 @@ Unix-based OSes.)
 | [128][srfi128] | `(schemepunk comparator)` | Comparators                  |
 | [132][srfi132] | `(schemepunk sort)`       | Sorting                      |
 | [133][srfi133] | `(schemepunk vector)`     | Vector library               |
+| [145][srfi145] | `(schemepunk syntax)`     | Assumptions                  |
 
 These modules are aliases for several common SRFIs and R7RS Large libraries,
 along with implementations of these libraries for Schemes that don't provide
@@ -304,6 +305,7 @@ Schemepunk also includes MIT/BSD-licensed code from the following authors:
 [srfi128]: https://srfi.schemers.org/srfi-128/
 [srfi132]: https://srfi.schemers.org/srfi-132/
 [srfi133]: https://srfi.schemers.org/srfi-133/
+[srfi145]: https://srfi.schemers.org/srfi-145/
 [clojure-threading]: https://clojure.org/guides/threading_macros
 [chibi-match]: http://synthcode.com/scheme/chibi/lib/chibi/match.html
 [sgr]: https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_parameters

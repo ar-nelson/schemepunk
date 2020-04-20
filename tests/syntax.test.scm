@@ -59,6 +59,10 @@
       (format #t "1 ~a ~s" 2 3)
       (assert-equal (get-output-string (current-output-port)) "1 2 3")))
 
+  (test "assume"
+    (assume #t)
+    (assume #t "a message"))
+
   (test-suite "Pattern Matching"
     (test "match quoted symbols"
       (assert-eqv
