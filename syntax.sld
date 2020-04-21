@@ -11,6 +11,8 @@
           none-of
           compl
           dotimes
+          with-input-from-string
+          with-output-to-string
           and-let*
           receive
           cut
@@ -233,6 +235,15 @@
              (do ((i 0 (+ i 1)))
                  ((>= i max-i))
                  . body)))))
+
+    (define (with-input-from-string str thunk)
+      (parameterize ((current-input-port (open-input-string str)))
+        (thunk)))
+
+    (define (with-output-to-string thunk)
+      (parameterize ((current-output-port (open-output-string)))
+        (thunk)
+        (get-output-string (current-output-port))))
 
     ;; match: A simple pattern-matching macro, based on Alex Shinn's
     ;; match-simple.scm, which is itself based on Andrew Wright's `match`.
