@@ -6,6 +6,8 @@
         (schemepunk comparator)
         (schemepunk hash-table)
         (schemepunk set)
+        (schemepunk generator)
+        (schemepunk hook)
         (schemepunk multimap)
         (schemepunk json)
         (schemepunk term-colors)

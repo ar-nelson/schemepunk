@@ -8,7 +8,8 @@
           assert-eqv
           assert-equal
           fail
-          failure?)
+          failure?
+          chibi-test-shim)
 
   (import (scheme base)
           (scheme write)
@@ -181,6 +182,31 @@
           (make-report test
             (color red "Test raised error:")
             (form->indent err)))))
+
+    (define-syntax inline-defines
+      (syntax-rules (define)
+        ((_ (x)) x)
+        ((_ ((define (name . args) . body) . rest))
+          (letrec ((name (lambda args . body)))
+            (inline-defines rest)))
+        ((_ ((define name value) . rest))
+          (let ((name value))
+            (inline-defines rest)))
+        ((_ (x . xs)) (begin x (inline-defines xs)))))
+
+    (define-syntax chibi-test-shim
+      (syntax-rules ()
+        ((_ test-name test-group-name . chibi-test-body)
+          (let-syntax
+            ((test-name
+               (syntax-rules ()
+                 ((_ expected actual)
+                   (test (format #f "~s" 'actual)
+                     (assert-equal actual expected)))))
+             (test-group-name
+               (syntax-rules ()
+                 ((_ name . body) (test-suite name (inline-defines body))))))
+            . chibi-test-body))))
 
     (define (end-test-runner)
       (write-colored green
