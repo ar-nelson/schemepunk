@@ -14,7 +14,7 @@
         (schemepunk test))
 
 
-(chibi-test-shim test test-group
+(chibi-test-shim test
   (cond-expand
     (chibi
       (include "tests/srfi-158-tests.scm"))

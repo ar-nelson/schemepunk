@@ -1,14 +1,11 @@
 (define-library (schemepunk test)
-  (export test-suite
-          test
-          end-test-runner
-          assert-true
-          assert-false
-          assert-eq
-          assert-eqv
-          assert-equal
-          fail
-          failure?
+  (export test-suite test end-test-runner
+          assert-true assert-false
+          assert-eq assert-eqv assert-equal assert-approximate
+          fail failure?
+          test-begin test-end test-group
+          test-assert test-error
+          test-eq test-eqv test-equal test-approximate
           chibi-test-shim)
 
   (import (scheme base)
@@ -16,6 +13,7 @@
           (scheme process-context)
           (scheme cxr)
           (schemepunk syntax)
+          (only (schemepunk list) snoc last drop-right)
           (schemepunk debug)
           (schemepunk debug indent)
           (schemepunk term-colors))
@@ -91,16 +89,60 @@
   (begin
     (define passed-count 0)
     (define failed '())
-    (define current-suite (make-parameter '()))
+    (define current-test-group '())
+
+    (define (write-indent)
+      (for-each (lambda (_) (write-string "  ")) current-test-group))
+
+    (define (test-begin name)
+      (write-indent)
+      (format #t "~a:~%" name)
+      (set! current-test-group (snoc current-test-group name)))
+
+    (define (test-end name)
+      (cond
+        ((null? current-test-group)
+          (error "test-end without test-begin" (list name)))
+        ((equal? (last current-test-group) name)
+          (set! current-test-group (drop-right current-test-group 1)))
+        (else
+          (error "test-end name does not match test-begin"
+                 (list name (last current-test-group))))))
+
+    (define-syntax inline-defines
+      (syntax-rules (define)
+        ((_ (x)) x)
+        ((_ ((define (name . args) . body) . rest))
+          (letrec ((name (lambda args . body)))
+            (inline-defines rest)))
+        ((_ ((define name value) . rest))
+          (let ((name value))
+            (inline-defines rest)))
+        ((_ (x . xs)) (begin x (inline-defines xs)))))
+
+    (define-syntax test-group
+      (syntax-rules ()
+        ((_ name . body)
+           (let1 group-name name
+             (test-begin group-name)
+             (inline-defines body)
+             (test-end group-name)))))
 
     (define-syntax test-suite
       (syntax-rules ()
-        ((test-suite name body ...)
-           (begin (write-indent)
-                  (write-string (string-append name ":"))
-                  (newline)
-                  (parameterize ((current-suite (snoc (current-suite) name)))
-                    body ...)))))
+        ((_ . args) (test-group . args))))
+
+    (define (pass-test name)
+      (set! passed-count (+ passed-count 1))
+      (write-indent)
+      (write-colored green (string-append "✓ " name))
+      (newline))
+
+    (define (fail-test name err)
+      (set! failed (snoc failed `(,current-test-group ,name ,err)))
+      (write-indent)
+      (write-colored red (string-append "✗ " name))
+      (newline))
 
     (define-syntax test
       (syntax-rules ()
@@ -114,22 +156,8 @@
                   (begin body ...
                          (pass-test name))))))
 
-    (define (write-indent)
-      (for-each (lambda (_) (write-string "  ")) (current-suite)))
-
-    (define (snoc xs x) (append xs (list x)))
-
-    (define (pass-test name)
-      (set! passed-count (+ passed-count 1))
-      (write-indent)
-      (write-colored green (string-append "✓ " name))
-      (newline))
-
-    (define (fail-test name err)
-      (set! failed (snoc failed `(,(current-suite) ,name ,err)))
-      (write-indent)
-      (write-colored red (string-append "✗ " name))
-      (newline))
+    (define (fail . xs)
+      (raise `(test-failure ,@xs)))
 
     (define-syntax assert-true
       (syntax-rules ()
@@ -157,8 +185,64 @@
       (unless (equal? actual expected)
         (fail (form->indent actual) (form->indent expected))))
 
-    (define (fail . xs)
-      (raise `(test-failure ,@xs)))
+    (define (assert-approximate actual expected error)
+      (unless (and (number? actual)
+                   (>= actual (- expected error))
+                   (<= actual (+ expected error)))
+        (fail (form->indent actual) (form->indent expected))))
+
+    (define-syntax test-assert
+      (syntax-rules ()
+        ((_ name expr) (test name (assert-true expr)))
+        ((_ expr) (test (format #f "~s" 'expr) (assert-true expr)))))
+
+    (define-syntax test-eq
+      (syntax-rules ()
+        ((_ name expected actual)
+          (test name
+            (assert-eq actual expected)))
+        ((_ expected actual)
+          (test (format #f "~s" 'actual)
+            (assert-eq actual expected)))))
+
+    (define-syntax test-eqv
+      (syntax-rules ()
+        ((_ name expected actual)
+          (test name
+            (assert-eqv actual expected)))
+        ((_ expected actual)
+          (test (format #f "~s" 'actual)
+            (assert-eqv actual expected)))))
+
+    (define-syntax test-equal
+      (syntax-rules ()
+        ((_ name expected actual)
+          (test name
+            (assert-equal actual expected)))
+        ((_ expected actual)
+          (test (format #f "~s" 'actual)
+            (assert-equal actual expected)))))
+
+    (define-syntax test-approximate
+      (syntax-rules ()
+        ((_ name expected actual error)
+          (test name
+            (assert-approximate actual expected error)))
+        ((_ expected actual error)
+          (test (format #f "~s" 'actual)
+            (assert-approximate actual expected error)))))
+
+    (define-syntax test-error
+      (syntax-rules ()
+        ((_ name #t . body)
+          (test name
+            (guard (e ((not (failure? e)) #t))
+              (begin . body)
+              (fail "did not raise error"))))
+        ((_ name expr)
+          (test-error name #t expr))
+        ((_ expr)
+          (test-error (format #f "~s" 'expr) #t expr))))
 
     (define (failure? x)
       (and (pair? x) (eq? (car x) 'test-failure)))
@@ -183,29 +267,13 @@
             (color red "Test raised error:")
             (form->indent err)))))
 
-    (define-syntax inline-defines
-      (syntax-rules (define)
-        ((_ (x)) x)
-        ((_ ((define (name . args) . body) . rest))
-          (letrec ((name (lambda args . body)))
-            (inline-defines rest)))
-        ((_ ((define name value) . rest))
-          (let ((name value))
-            (inline-defines rest)))
-        ((_ (x . xs)) (begin x (inline-defines xs)))))
-
     (define-syntax chibi-test-shim
       (syntax-rules ()
-        ((_ test-name test-group-name . chibi-test-body)
+        ((_ test-name . chibi-test-body)
           (let-syntax
             ((test-name
                (syntax-rules ()
-                 ((_ expected actual)
-                   (test (format #f "~s" 'actual)
-                     (assert-equal actual expected)))))
-             (test-group-name
-               (syntax-rules ()
-                 ((_ name . body) (test-suite name (inline-defines body))))))
+                 ((_ . args) (test-equal . args)))))
             . chibi-test-body))))
 
     (define (end-test-runner)

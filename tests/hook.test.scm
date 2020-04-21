@@ -3,7 +3,7 @@
         (schemepunk hook)
         (schemepunk test))
 
-(test-suite "Hooks"
+(test-group "Hooks"
   (test "run empty hook"
     (hook-run (make-hook 0))
     (hook-run (make-hook 2) 'foo 'bar))

@@ -29,7 +29,7 @@
 (define (sort-result result)
   (list-sort! alist<? (map sort-alist result)))
 
-(cond-expand ((not kawa) (test-suite "Datalog"
+(cond-expand ((not kawa) (test-group "Datalog"
   (test "sorting alists of symbols"
     (let-datalog (X Y Z)
       ()

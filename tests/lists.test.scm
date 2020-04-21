@@ -3,7 +3,7 @@
         (schemepunk list)
         (schemepunk test))
 
-(test-suite "List Utilities"
+(test-group "List Utilities"
   (test "topological-sort"
     (assert-equal (topological-sort '((x z) (y x) (z)))
                                     '(z x y))))

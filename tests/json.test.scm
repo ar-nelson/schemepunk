@@ -3,7 +3,7 @@
         (schemepunk json)
         (schemepunk test))
 
-(test-suite "JSON Reader"
+(test-group "JSON Reader"
   (test "reads keywords"
     (assert-equal (string->json "null") 'null)
     (assert-equal (string->json "true") 'true)
@@ -57,7 +57,7 @@
     (assert-equal (string->json "[[{\"\":[{\"\":[]}]}]]")
                   #(#((("" . #((("" . #()))))))))))
 
-(test-suite "JSON Writer"
+(test-group "JSON Writer"
   (test "writes primitives"
     (assert-equal (json->string 'null) "null")
     (assert-equal (json->string 'false) "false")

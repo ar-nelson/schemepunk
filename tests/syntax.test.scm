@@ -2,7 +2,7 @@
         (schemepunk syntax)
         (schemepunk test))
 
-(test-suite "Schemepunk Syntax"
+(test-group "Schemepunk Syntax"
   (test "->"
     (assert-eqv (-> "6" string->number (/ 2) (- 5)) -2))
 
@@ -69,7 +69,7 @@
     (assume #t)
     (assume #t "a message"))
 
-  (test-suite "Pattern Matching"
+  (test-group "Pattern Matching"
     (test "match quoted symbols"
       (assert-eqv
         2

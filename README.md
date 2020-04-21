@@ -37,6 +37,7 @@ Unix-based OSes.)
 | [8][srfi8]     | `(schemepunk syntax)`     | `receive`                    |
 | [26][srfi26]   | `(schemepunk syntax)`     | `cut` and `cute`             |
 | [28][srfi28]   | `(schemepunk syntax)`     | `format`                     |
+| [64][srfi64]   | `(schemepunk test)`       | Unit tests                   |
 | [113][srfi113] | `(schemepunk set)`        | Sets and bags                |
 | [125][srfi125] | `(schemepunk hash-table)` | Hash tables                  |
 | [128][srfi128] | `(schemepunk comparator)` | Comparators                  |
@@ -242,12 +243,13 @@ reworking its API, so it is not documented here.
 
 `(schemepunk test)`
 
-A unit test framework modeled after Javascript's [Mocha][mocha]. Not based on
-any SRFI.
+A unit test framework modeled after Javascript's [Mocha][mocha]. Although its
+preferred API differs from [SRFI 64][srfi64], it includes compatibility macros
+that allow it to run SRFI 64 tests without modifications.
 
 ![Screenshot of unit test results](.readme-images/unit-test.png)
 
-Test suites are defined as `(test-suite <name> <tests>…)`, where `<tests>` is
+Test suites are defined as `(test-group <name> <tests>…)`, where `<tests>` is
 one or more `(test <name> <expressions>…)` clauses. Test suite files have the
 `.test.scm` extension.
 
@@ -259,6 +261,7 @@ functions:
 - `(assert-eq <actual> <expected>)`
 - `(assert-eqv <actual> <expected>)`
 - `(assert-equal <actual> <expected>)`
+- `(assert-approximate <actual> <expected> <error>)`
 - `(fail <message>)`
 
 `(end-test-runner)` prints a report of passed/failed tests and ends the process
@@ -306,6 +309,7 @@ Schemepunk also includes MIT/BSD-licensed code from the following authors:
 [srfi8]: https://srfi.schemers.org/srfi-8/
 [srfi26]: https://srfi.schemers.org/srfi-26/
 [srfi28]: https://srfi.schemers.org/srfi-28/
+[srfi64]: https://srfi.schemers.org/srfi-64/
 [srfi113]: https://srfi.schemers.org/srfi-113/
 [srfi125]: https://srfi.schemers.org/srfi-125/
 [srfi128]: https://srfi.schemers.org/srfi-128/

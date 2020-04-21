@@ -8,7 +8,7 @@
 (define (make-mmap)
   (make-multimap (make-default-comparator) (make-default-comparator)))
 
-(test-suite "Multimap"
+(test-group "Multimap"
   (test "create multimap"
     (assert-true (multimap? (make-mmap))))
 

@@ -1,6 +1,6 @@
 (import (scheme base) (schemepunk test))
 
-(test-suite "Example Tests"
+(test-group "Example Tests"
   (test "Hello, world!"
     (assert-true "impossible" #t))
 
