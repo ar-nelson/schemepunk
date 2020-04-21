@@ -12,6 +12,7 @@
           compl
           dotimes
           and-let*
+          receive
           cut
           cute
           format
@@ -44,6 +45,19 @@
             ((_ ((name value) . rest) . body)
               (let ((name value))
                 (and name (and-let* rest . body)))))))))
+
+  (cond-expand
+    ((or chicken (library (srfi 8)))
+      (import (srfi 8)))
+    ((library (std srfi 8))
+      (import (std srfi 8)))
+    (else
+      (begin
+        (define-syntax receive
+          (syntax-rules ()
+            ((receive formals expression body ...)
+              (call-with-values (lambda () expression)
+                                (lambda formals body ...))))))))
 
   (cond-expand
     ((or chicken (library (srfi 26)))
@@ -154,11 +168,6 @@
                 (error "invalid assumption" (list 'ok? . msgs)))))))))
 
   (begin
-    (define-syntax λ
-      (syntax-rules ()
-        ((λ (args ...) . body) (lambda (args ...) . body))
-        ((λ arg . body) (lambda (arg) . body))))
-
     (define-syntax ->
       (syntax-rules ()
         ((-> x) x)
@@ -184,12 +193,12 @@
     (define-syntax λ->
       (syntax-rules ()
         ((λ-> . rest)
-          (λ x (-> x . rest)))))
+          (lambda (x) (-> x . rest)))))
 
     (define-syntax λ->>
       (syntax-rules ()
         ((λ->> . rest)
-          (λ x (->> x . rest)))))
+          (lambda (x) (->> x . rest)))))
 
     (define-syntax let1
       (syntax-rules ()
@@ -203,19 +212,19 @@
       (syntax-rules (is ?)
         ((one-of (is pred?)) pred?)
         ((one-of x)
-          (λ y (eqv? x y)))
+          (lambda (y) (eqv? x y)))
         ((one-of (is pred?) . xs)
-          (λ y (or (pred? y) ((one-of . xs) y))))
+          (lambda (y) (or (pred? y) ((one-of . xs) y))))
         ((one-of (? pred?) . xs)
-          (λ y (or (pred? y) ((one-of . xs) y))))
+          (lambda (y) (or (pred? y) ((one-of . xs) y))))
         ((one-of x . xs)
-          (λ y (or (eqv? x y) ((one-of . xs) y))))))
+          (lambda (y) (or (eqv? x y) ((one-of . xs) y))))))
 
     (define-syntax none-of
       (syntax-rules () ((none-of . xs) (compl (one-of . xs)))))
 
     (define (compl pred?)
-      (λ(x) (not (pred? x))))
+      (lambda (x) (not (pred? x))))
 
     (define-syntax dotimes
       (syntax-rules ()
@@ -361,6 +370,22 @@
                 (sym? abracadabra))))))))
 
   (begin
+    (define-syntax match-lambda-body
+      (syntax-rules ()
+        ((_ () args body) (lambda args body))
+        ((_ (pattern . rest) (args ...) body)
+          (match-lambda-body
+            rest
+            (args ... arg)
+            (match-body arg () pattern body)))))
+
+    (define-syntax λ
+      (syntax-rules ()
+        ((λ (patterns ...) . body)
+          (match-lambda-body (patterns ...) () (begin . body)))
+        ((λ arg . body)
+          (lambda (arg) . body))))
+
     (define-syntax match-lambda
       (syntax-rules ()
         ((_ clause ...) (lambda (expr) (match expr clause ...)))))

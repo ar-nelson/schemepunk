@@ -4,29 +4,35 @@
 
 (test-suite "Schemepunk Syntax"
   (test "->"
-    (assert-eqv -2 (-> "6" string->number (/ 2) (- 5))))
+    (assert-eqv (-> "6" string->number (/ 2) (- 5)) -2))
 
   (test "->>"
-    (assert-eqv 14/3 (->> "6" string->number (/ 2) (- 5))))
+    (assert-eqv (->> "6" string->number (/ 2) (- 5)) 14/3))
 
   (test "as->"
-    (assert-eqv 2 (as-> "6" x (string->number x) (/ x 2) (- 5 x))))
+    (assert-eqv (as-> "6" x (string->number x) (/ x 2) (- 5 x)) 2))
 
   (test "λ"
-    (assert-equal '(6 7 8) (map (λ x (+ x 2)) (map (λ (x) (+ x 3)) '(1 2 3)))))
+    (assert-equal (map (λ x (+ x 2)) (map (λ (x) (+ x 3)) '(1 2 3))) '(6 7 8)))
+
+  (test "λ with destructuring"
+    (assert-equal (map (λ ((a b) (c d)) (list a b c d))
+                       '((10 20) (30 40))
+                       '((50 60) (70 80)))
+                  '((10 20 50 60) (30 40 70 80))))
 
   (test "λ->"
     (assert-equal
-      '("1x" "2x" "3x")
-      (map (λ-> number->string (string-append "x")) '(1 2 3))))
+      (map (λ-> number->string (string-append "x")) '(1 2 3))
+      '("1x" "2x" "3x")))
 
   (test "λ->>"
     (assert-equal
-      '("x1" "x2" "x3")
-      (map (λ->> number->string (string-append "x")) '(1 2 3))))
+      (map (λ->> number->string (string-append "x")) '(1 2 3))
+      '("x1" "x2" "x3")))
 
   (test "let1"
-    (assert-eqv 5 (let1 x 2 (define y 3) (+ x y))))
+    (assert-eqv (let1 x 2 (define y 3) (+ x y)) 5))
 
   (test "one-of"
     (assert-true ((one-of 1 3 5 7) 5))

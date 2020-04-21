@@ -34,6 +34,7 @@ Unix-based OSes.)
 | -------------- | ------------------------- | ---------------------------- |
 | [1][srfi1]     | `(schemepunk list)`       | List library *(plus extras)* |
 | [2][srfi2]     | `(schemepunk syntax)`     | `and-let*`                   |
+| [8][srfi8]     | `(schemepunk syntax)`     | `receive`                    |
 | [26][srfi26]   | `(schemepunk syntax)`     | `cut` and `cute`             |
 | [28][srfi28]   | `(schemepunk syntax)`     | `format`                     |
 | [113][srfi113] | `(schemepunk set)`        | Sets and bags                |
@@ -299,6 +300,7 @@ Schemepunk also includes MIT/BSD-licensed code from the following authors:
 [sagittarius]: https://bitbucket.org/ktakashi/sagittarius-scheme/wiki/Home
 [srfi1]: https://srfi.schemers.org/srfi-1/
 [srfi2]: https://srfi.schemers.org/srfi-2/
+[srfi8]: https://srfi.schemers.org/srfi-8/
 [srfi26]: https://srfi.schemers.org/srfi-26/
 [srfi28]: https://srfi.schemers.org/srfi-28/
 [srfi113]: https://srfi.schemers.org/srfi-113/
