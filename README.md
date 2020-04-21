@@ -44,6 +44,7 @@ Unix-based OSes.)
 | [132][srfi132] | `(schemepunk sort)`       | Sorting                      |
 | [133][srfi133] | `(schemepunk vector)`     | Vector library               |
 | [145][srfi145] | `(schemepunk syntax)`     | Assumptions                  |
+| [146][srfi146] | `(schemepunk mapping)`    | Mappings (w/o `(srfi 146 hash)`) |
 | [158][srfi158] | `(schemepunk generator)`  | Generators and Accumulators  |
 | [173][srfi173] | `(schemepunk hook)`       | Hooks                        |
 
@@ -294,6 +295,7 @@ Schemepunk also includes MIT/BSD-licensed code from the following authors:
 - SRFI 113, 125, 132, and 133 implementations are taken from Chibi Scheme,
   copyright &copy; 2009-2018 Alex Shinn
 - SRFI 128 implementation copyright &copy; 2015 John Cowan
+- SRFI 146 implementation copyright &copy; 2016-2017 Marc Nieper-Wißkirchen
 - SRFI 158 implementation copyright &copy; 2015 Shiro Kawai, John Cowan, Thomas
   Gilray
 
@@ -316,6 +318,7 @@ Schemepunk also includes MIT/BSD-licensed code from the following authors:
 [srfi132]: https://srfi.schemers.org/srfi-132/
 [srfi133]: https://srfi.schemers.org/srfi-133/
 [srfi145]: https://srfi.schemers.org/srfi-145/
+[srfi146]: https://srfi.schemers.org/srfi-146/
 [srfi158]: https://srfi.schemers.org/srfi-158/
 [srfi173]: https://srfi.schemers.org/srfi-173/
 [clojure-threading]: https://clojure.org/guides/threading_macros
