@@ -28,6 +28,18 @@
                                rtd-name
                                rtd-all-field-names
                                rtd-accessor)))
+    (kawa
+      (import (only (kawa base) record?)
+              (class kawa.lang Record))
+      (begin
+        (define (record-rtd record::Record)
+          (cons (string->symbol (record:getTypeName))
+                (list->vector (Record:typeFieldNames record:class))))
+        (define rtd-name car)
+        (define rtd-all-field-names cdr)
+        (define (rtd-accessor rtd name)
+          (lambda (record::Record)
+            (record:get (symbol->string name) #f)))))
     (else
        (begin (define (record? _) #f)
               (define-syntax record-rtd (syntax-rules () ((_ . _) #f)))
