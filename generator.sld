@@ -22,20 +22,46 @@
     (kawa
       (import (scheme base)
               (scheme case-lambda)
-              (only (schemepunk syntax) λ cut)
+              (schemepunk syntax)
               (only (schemepunk list) any)
-              (only (kawa base) future)
-              (class java.util.concurrent SynchronousQueue))
+              (only (kawa base) define-simple-class runnable try-catch this invoke-special)
+              (class java.lang Runnable Thread InterruptedException)
+              (class java.util.concurrent SynchronousQueue)
+              (class gnu.mapping Procedure Procedure0))
       ; Kawa doesn't support call/cc, but we can still implement
       ; make-coroutine-generator with threads!
       (begin
+        ; Unfinished coroutines can hang around and leak memory.
+        ; The only reliable way to fix this is to add a finalize() method
+        ; that kills threads when the generator is garbage collected.
+        (define-simple-class CoroutineGenerator (Procedure0)
+          (proc ::Procedure access: 'private)
+          (thread ::Thread access: 'private)
+          ((*init* (pr ::Procedure) (th ::Thread))
+            (invoke-special Procedure0 (this) '*init*)
+            (set! proc pr)
+            (set! thread th))
+          ((apply0) (proc))
+          ((finalize) access: 'public
+            (thread:interrupt)))
+
         (define (make-coroutine-generator proc)
           (define queue (SynchronousQueue))
           (define done #f)
-          (future (begin (proc (cut queue:put <>))
-                         (queue:offer (eof-object))
-                         (set! done #t)))
-          (λ () (if done (eof-object) (queue:take)))))
+          (define thread
+            (-> (λ ()
+                  (try-catch (begin (proc (cut queue:put <>))
+                                    (let loop ()
+                                      (queue:put (eof-object))
+                                      (loop)))
+                    (ex InterruptedException #f)))
+                runnable
+                Thread))
+          (thread:setDaemon #t)
+          (thread:start)
+          (CoroutineGenerator
+            (λ () (queue:take))
+            thread)))
       (include "polyfills/srfi-158-impl.scm"))
     ((and (not chicken) (library (srfi 158)))
       (import (srfi 158)))
