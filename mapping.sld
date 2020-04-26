@@ -83,7 +83,7 @@
           (define key-comparator (mapping-key-comparator x))
           (and (every (λ-> mapping-key-comparator (eq? key-comparator)) xs)
                (apply %mapping=?% `(,value-comparator ,x ,@xs))))))
-    (sagittarius
+    #;(sagittarius
       (import (rename (srfi 146) (mapping-intern %mapping-intern%)
                                  (mapping-intern! %mapping-intern!%)))
 
@@ -102,7 +102,7 @@
                (λ (old-key old-value update remove)
                  (return mapping old-value))))))
         (define mapping-intern! mapping-intern)))
-    ((and (not chicken) (library (srfi 146)))
+    ((and (not chicken) (not sagittarius) (library (srfi 146)))
       (import (rename (srfi 146) (mapping=? %mapping=?%)))
 
       ; Several Schemes raise an error when comparing mappings with different

@@ -9,6 +9,7 @@
         (schemepunk set)
         (schemepunk generator)
         (schemepunk hook)
+        (schemepunk btree)
         (schemepunk multimap)
         (schemepunk json)
         (schemepunk term-colors)
