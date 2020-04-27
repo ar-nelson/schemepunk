@@ -111,16 +111,25 @@
       42
       (mapping-ref/default (mapping-delete-all mapping1 '(a b)) 'b 42))
 
+    (test-equal "mapping-delete!"
+      42
+      (mapping-ref/default (mapping-delete! (mapping-copy mapping1) 'b) 'b 42))
+
+    (test-equal "mapping-delete-all!"
+      42
+      (mapping-ref/default (mapping-delete-all! (mapping-copy mapping1) '(a b)) 'b 42))
+
     (test-equal "mapping-intern: key in mapping"
       (list mapping1 2)
-      (receive result
-          (mapping-intern mapping1 'b (lambda () (error "should not have been invoked")))
+      (receive result (mapping-intern mapping1
+                                      'b
+                                      (lambda ()
+                                        (error "should not have been invoked")))
         result))
 
     (test-equal "mapping-intern: key not in mapping"
       (list 42 42)
-      (receive (mapping value)
-          (mapping-intern mapping1 'd (lambda () 42))
+      (receive (mapping value) (mapping-intern mapping1 'd (lambda () 42))
         (list value (mapping-ref mapping 'd))))
 
     (test-equal "mapping-update"
@@ -137,8 +146,16 @@
 
     (test-equal "mapping-pop: non-empty mapping"
       (list 2 'a 1)
-      (receive (mapping key value)
-          (mapping-pop mapping1)
+      (receive (mapping key value) (mapping-pop mapping1)
+        (list (mapping-size mapping) key value)))
+
+    (test-equal "mapping-pop!: empty mapping"
+      'empty
+      (mapping-pop! (mapping-copy mapping0) (lambda () 'empty)))
+
+    (test-equal "mapping-pop!: non-empty mapping"
+      (list 2 'a 1)
+      (receive (mapping key value) (mapping-pop! (mapping-copy mapping1))
         (list (mapping-size mapping) key value)))
 
     (test-equal
@@ -177,49 +194,35 @@
 
   (test-equal "mapping-find: found in mapping"
     (list 'b 2)
-    (receive result
-        (mapping-find (lambda (key value)
-        (and (eq? key 'b)
-             (= value 2)))
-      mapping1
-      (lambda () (error "should not have been called")))
+    (receive result (mapping-find (lambda (key value) (and (eq? key 'b)
+                                                           (= value 2)))
+                                  mapping1
+                                  (lambda ()
+                                    (error "should not have been called")))
       result))
 
   (test-equal "mapping-find: not found in mapping"
     (list 42)
-    (receive result
-        (mapping-find (lambda (key value)
-        (eq? key 'd))
-      mapping1
-      (lambda ()
-        42))
+    (receive result (mapping-find (lambda (key value) (eq? key 'd))
+                                  mapping1
+                                  (lambda () 42))
       result))
 
   (test-equal "mapping-count"
     2
-    (mapping-count (lambda (key value)
-           (>= value 2))
-         mapping1))
+    (mapping-count (lambda (key value) (>= value 2)) mapping1))
 
   (test-assert "mapping-any?: found"
-    (mapping-any? (lambda (key value)
-          (= value 3))
-        mapping1))
+    (mapping-any? (lambda (key value) (= value 3)) mapping1))
 
   (test-assert "mapping-any?: not found"
-    (not (mapping-any? (lambda (key value)
-         (= value 4))
-       mapping1)))
+    (not (mapping-any? (lambda (key value) (= value 4)) mapping1)))
 
   (test-assert "mapping-every?: true"
-    (mapping-every? (lambda (key value)
-      (<= value 3))
-          mapping1))
+    (mapping-every? (lambda (key value) (<= value 3)) mapping1))
 
   (test-assert "mapping-every?: false"
-    (not (mapping-every? (lambda (key value)
-           (<= value 2))
-         mapping1)))
+    (not (mapping-every? (lambda (key value) (<= value 2)) mapping1)))
 
   (test-equal "mapping-keys"
     3
@@ -237,11 +240,10 @@
 
 (test-group "Mapping and folding"
   (define mapping1 (mapping comparator 'a 1 'b 2 'c 3))
-  (define mapping2 (mapping-map (lambda (key value)
-        (values (symbol->string key)
-          (* 10 value)))
-            comparator
-            mapping1))
+  (define mapping2
+    (mapping-map (lambda (key value) (values (symbol->string key) (* 10 value)))
+                 comparator
+                 mapping1))
 
   (test-equal "mapping-map"
     20
@@ -250,42 +252,36 @@
   (test-equal "mapping-for-each"
     6
     (let ((counter 0))
-      (mapping-for-each (lambda (key value)
-          (set! counter (+ counter value)))
-        mapping1)
+      (mapping-for-each (lambda (key value) (set! counter (+ counter value)))
+                        mapping1)
       counter))
 
   (test-equal "mapping-fold"
     6
-    (mapping-fold (lambda (key value acc)
-          (+ value acc))
-        0
-        mapping1))
+    (mapping-fold (lambda (key value acc) (+ value acc))
+                  0
+                  mapping1))
 
   (test-equal "mapping-map->list"
     (+ (* 1 1) (* 2 2) (* 3 3))
-    (fold + 0 (mapping-map->list (lambda (key value)
-             (* value value))
-           mapping1)))
+    (fold + 0 (mapping-map->list (lambda (key value) (* value value))
+                                 mapping1)))
 
   (test-equal "mapping-filter"
     2
-    (mapping-size (mapping-filter (lambda (key value)
-          (<= value 2))
-        mapping1)))
+    (mapping-size (mapping-filter (lambda (key value) (<= value 2))
+                                  mapping1)))
 
   (test-equal "mapping-remove"
     1
-    (mapping-size (mapping-remove (lambda (key value)
-          (<= value 2))
-        mapping1)))
+    (mapping-size (mapping-remove (lambda (key value) (<= value 2))
+                                  mapping1)))
 
   (test-equal "mapping-partition"
     (list 1 2)
     (receive result
-      (mapping-partition (lambda (key value)
-           (eq? 'b key))
-         mapping1)
+      (mapping-partition (lambda (key value) (eq? 'b key))
+                         mapping1)
       (map mapping-size result))))
 
 (test-group "Copying and conversion"
@@ -307,8 +303,7 @@
 
   (test-equal "alist->mapping"
     2
-    (mapping-ref mapping2 'b)
-    )
+    (mapping-ref mapping2 'b))
 
   (test-equal "alist->mapping!: new key"
     4
@@ -324,11 +319,13 @@
   (define mapping3 (mapping comparator 'a 1 'c 3))
   (define mapping4 (mapping comparator 'a 1 'c 3 'd 4))
   (define mapping5 (mapping comparator 'a 1 'b 2 'c 6))
-  (define mapping6 (mapping (make-comparator (comparator-type-test-predicate comparator)
-               (comparator-equality-predicate comparator)
-               (comparator-ordering-predicate comparator)
-               (lambda (obj) 42))
-          'a 1 'b 2 'c 3))
+  (define mapping6
+    (mapping
+      (make-comparator (comparator-type-test-predicate comparator)
+                       (comparator-equality-predicate comparator)
+                       (comparator-ordering-predicate comparator)
+                       (lambda (obj) 42))
+      'a 1 'b 2 'c 3))
 
 
   (test-assert "mapping=?: equal mappings"
@@ -475,16 +472,15 @@
   (test-equal "mapping-map/monotone"
     '((1 . 1) (2 . 4) (3 . 9))
     (mapping->alist
-      (mapping-map/monotone (lambda (key value)
-           (values value (* value value)))
-         comparator
-         mapping1)))
+      (mapping-map/monotone (lambda (key value) (values value (* value value)))
+                            comparator
+                            mapping1)))
 
   (test-equal "mapping-fold/reverse"
     '(1 2 3)
-    (mapping-fold/reverse (lambda (key value acc)
-          (cons value acc))
-        '() mapping1)))
+    (mapping-fold/reverse (lambda (key value acc) (cons value acc))
+                          '()
+                          mapping1)))
 
 (test-group "Comparators"
   (define mapping1 (mapping comparator 'a 1 'b 2 'c 3))
@@ -526,4 +522,3 @@
       (<? comparator mapping1 mapping5))))
 
 (test-end "Mappings")
-

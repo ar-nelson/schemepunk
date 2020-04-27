@@ -110,7 +110,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ---
 
-# SRFI 146 Implementation License
+# SRFI 146 Tests and Reference Implementation License
 
 Copyright (C) Marc Nieper-Wißkirchen (2016, 2017). All Rights Reserved.
 

@@ -88,6 +88,12 @@ Gerbil.
                   (if (eof-object? ch) done (yield ch)))))
     ```
 
+- `(fold-by-pairs <fn> <seed> <list>)` is like `fold`, but reads `list` two
+  elements at a time. It calls `fn` with three arguments. It raises an error if
+  `list` does not contain an even number of elements.
+
+- `(fold-right-by-pairs <fn> <seed> <list>)` is `fold-by-pairs` in reverse.
+
 - `(topological-sort <dependencies>)` sorts a list of dependencies in dependency
   order.
 
@@ -275,6 +281,48 @@ The `Makefile` contains usage examples for the test runner scripts. Finding the
 test files and running the tests are split into two separate scripts, because
 some of my projects need to search only specific subdirectories for test files.
 
+### B-trees
+
+`(schemepunk btree)`
+
+An original implementation of persistent B-trees, used to implement `(schemepunk
+mapping)` on all Schemes except Gauche¹.
+
+Schemepunk's B-tree mappings are frequently 2-3 times faster than the
+red-black-tree reference implementation of SRFI 146, and significantly faster
+when constructing large mappings. This library includes linear-update
+`!`-suffixed mutation functions, for yet another performance boost.
+
+You usually want to use this module through `(schemepunk mapping)`, but, if you
+want to use the B-tree data structure directly, this module provides these
+low-level functions:
+
+- `(btree <comparator> <max-size>)`
+- `(btree? <btree>)`
+- `(btree-key-comparator <btree>)`
+- `(btree-empty? <btree>)`
+- `(btree-copy <btree>)`
+- `(btree-ref <key> <value> <failure-proc>)` *(`failure-proc` is optional)*
+- `(btree-set <btree> <key> <value>)`
+- `(btree-set! <btree> <key> <value>)`
+- `(btree-delete <btree> <key>)`
+- `(btree-delete! <btree> <key>)`
+- `(btree-pop <btree> <key>)` *(returns two values: `(key . value)` and modified btree)*
+- `(btree-pop! <btree> <key>)` *(returns one value: `(key . value)`)*
+- `(btree-fold <fn> <seed> <btree>)`
+- `(btree-fold-right <fn> <seed> <btree>)`
+- `(alist->btree <alist> <comparator> <max-size>)`
+- `(btree->alist <btree>)`
+- `(btree-subset? <value-comparator> <btree1> <btree2>)`
+- `(btree=? <value-comparator> <btree1> <btree2>)`
+- `(btree<? <value-comparator> <btree1> <btree2>)`
+- `(btree-hash <value-comparator> <btree>)`
+- `(make-btree-comparator <value-comparator>)`
+- `btree-comparator`
+
+¹ _B-trees are faster than most Schemes' SRFI 146, but Gauche's `<tree-map>` is
+usually even faster_
+
 ### Datalog (WIP)
 
 `(schemepunk datalog)`
@@ -295,7 +343,8 @@ Schemepunk also includes MIT/BSD-licensed code from the following authors:
 - SRFI 113, 125, 132, and 133 implementations are taken from Chibi Scheme,
   copyright &copy; 2009-2018 Alex Shinn
 - SRFI 128 implementation copyright &copy; 2015 John Cowan
-- SRFI 146 implementation copyright &copy; 2016-2017 Marc Nieper-Wißkirchen
+- SRFI 146 tests and original reference implementation copyright &copy;
+  2016-2017 Marc Nieper-Wißkirchen
 - SRFI 158 implementation copyright &copy; 2015 Shiro Kawai, John Cowan, Thomas
   Gilray
 

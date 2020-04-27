@@ -53,6 +53,7 @@
           map-with-index
           list-gen
           string-join
+          fold-in-pairs fold-right-in-pairs
           topological-sort)
 
   (import (scheme base)
@@ -81,6 +82,16 @@
           (fold (λ(b a) (string-append a delim b))
                 (car xs)
                 (cdr xs))))
+
+    (define (fold-right-in-pairs fn seed xs)
+      (match xs
+        (() seed)
+        ((x y . rest) (fn x y (fold-right-in-pairs fn seed rest)))))
+
+    (define (fold-in-pairs fn seed xs)
+      (match xs
+        (() seed)
+        ((x y . rest) (fold-in-pairs fn (fn x y seed) rest))))
 
     ;; Sorts a list of dependencies in dependency order.
     ;;

@@ -1,11 +1,21 @@
 (import (scheme base)
+        (scheme case-lambda)
         (scheme time)
         (schemepunk syntax)
+        (schemepunk list)
         (schemepunk random)
         (schemepunk hash-table)
         (schemepunk comparator)
-        (schemepunk mapping)
+        (schemepunk generator)
         (schemepunk btree))
+
+(cond-expand
+  (chibi
+    (include "tests/old-mapping/nieper-rbtree.scm")
+    (include "tests/old-mapping/146.scm"))
+  (else
+    (include "./old-mapping/nieper-rbtree.scm")
+    (include "./old-mapping/146.scm")))
 
 (define comparator (make-default-comparator))
 (define table-10k (make-hash-table comparator))
