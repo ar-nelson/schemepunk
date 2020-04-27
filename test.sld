@@ -50,15 +50,9 @@
       (import (only (kawa reflect) instance?)
               (class java.lang Exception))
       (begin
-        (define (test-error? e) (or (error-object? e) (instance? e Exception)))
+        (define (test-error? e) (instance? e Exception))
         (define (write-test-error err port)
-          (format port "Test raised error:~%~%")
-          (if (error-object? err)
-            (format port "~a~%message: ~a~%irritants: ~a"
-              err
-              (error-object-message err)
-              (error-object-irritants err))
-            (err:printStackTrace port)))))
+          (err:printStackTrace port))))
     ((library (rnrs conditions))
       (import (rnrs conditions))
       (begin

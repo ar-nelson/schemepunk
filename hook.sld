@@ -13,6 +13,9 @@
     ((and (not chicken) (library (srfi 173)))
       (import (srfi 173)))
     (else
+      (cond-expand
+        ((and chicken debug) (import (only (srfi 99) define-record-type)))
+        (else))
       (begin
         (define-record-type Hook
           (list->hook arity handlers)
