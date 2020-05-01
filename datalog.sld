@@ -46,8 +46,8 @@
         '()
         (make-fact-store)
         (make-fact-store)
-        (make-multimap predicate-comparator predicate-comparator)
-        (make-multimap predicate-comparator predicate-comparator)))
+        (multimap predicate-comparator predicate-comparator)
+        (multimap predicate-comparator predicate-comparator)))
 
     (define-record-type Var
       (make-var name)
@@ -95,7 +95,7 @@
       (make-vector-comparator value-comparator vector? vector-length vector-ref))
 
     (define (make-fact-store)
-      (make-multimap predicate-comparator tuple-comparator))
+      (multimap predicate-comparator tuple-comparator))
 
     (define (fact-store-query store predicate params)
       (->> (multimap-ref store predicate)
@@ -199,7 +199,7 @@
            (map (λ->> (var-subst params)))
            (for-each (λ tuple
              (unless (set-contains? existing tuple)
-               (multimap-add! out predicate tuple))))))
+               (multimap-adjoin! out predicate tuple))))))
 
     (define (extend-datalog-db db new-rules new-facts)
       (let-values (((facts) (multimap-copy (db-facts db)))
@@ -208,7 +208,7 @@
                                               new-rules)))
         (for-each
           (λ-> (match ((predicate . tuple)
-                 (multimap-add! facts predicate tuple))))
+                 (multimap-adjoin! facts predicate tuple))))
           new-facts)
         (let* ((strata (->> (db-stratified-rules db)
                             (fold append new-rules)
@@ -233,10 +233,10 @@
           (for-each
             (λ rule
                (let1 p (car (rule-head rule))
-                 (for-each (λ->> car (multimap-add! deps p)) (rule-body rule))
+                 (for-each (λ->> car (multimap-adjoin! deps p)) (rule-body rule))
                  (for-each
-                   (λ x (multimap-add! deps p (car x))
-                        (multimap-add! neg-deps p (car x)))
+                   (λ x (multimap-adjoin! deps p (car x))
+                        (multimap-adjoin! neg-deps p (car x)))
                    (rule-negatives rule))))
             rules)
 
@@ -245,10 +245,10 @@
             (λ a (set-for-each
                    (λ b (set-for-each
                           (λ c (unless (multimap-contains? deps a c)
-                                 (multimap-add! deps a c)
+                                 (multimap-adjoin! deps a c)
                                  (when (or (multimap-contains? neg-deps a b)
                                            (multimap-contains? neg-deps b c))
-                                   (multimap-add! neg-deps a c))))
+                                   (multimap-adjoin! neg-deps a c))))
                           (multimap-ref deps b)))
                    (multimap-ref deps a)))
             (multimap-keys deps))
