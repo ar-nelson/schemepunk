@@ -7,6 +7,7 @@
           λ->>
           let1
           let1-values
+          inline-defines
           one-of
           none-of
           compl
@@ -209,6 +210,21 @@
     (define-syntax let1-values
       (syntax-rules ()
         ((let1 names value . body) (let-values ((names value)) . body))))
+
+    (define-syntax inline-defines
+      (syntax-rules (define define-values)
+        ((_ x) x)
+        ((_ (define (name . args) . body) . rest)
+          (letrec ((name (lambda args . body)))
+            (inline-defines . rest)))
+        ((_ (define name value) . rest)
+          (let ((name value))
+            (inline-defines . rest)))
+        ((_ (define-values names value) . rest)
+          (let-values ((names value))
+            (inline-defines . rest)))
+        ((_ x . xs)
+          (begin x (inline-defines . xs)))))
 
     (define-syntax one-of
       (syntax-rules (is ?)

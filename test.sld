@@ -6,7 +6,7 @@
           test-begin test-end test-group
           test-assert test-error
           test-eq test-eqv test-equal test-approximate
-          chibi-test-shim)
+          current-test-comparator chibi-test-shim)
 
   (import (scheme base)
           (scheme write)
@@ -103,23 +103,12 @@
           (error "test-end name does not match test-begin"
                  (list name (last current-test-group))))))
 
-    (define-syntax inline-defines
-      (syntax-rules (define)
-        ((_ (x)) x)
-        ((_ ((define (name . args) . body) . rest))
-          (letrec ((name (lambda args . body)))
-            (inline-defines rest)))
-        ((_ ((define name value) . rest))
-          (let ((name value))
-            (inline-defines rest)))
-        ((_ (x . xs)) (begin x (inline-defines xs)))))
-
     (define-syntax test-group
       (syntax-rules ()
         ((_ name . body)
            (let1 group-name name
              (test-begin group-name)
-             (inline-defines body)
+             (inline-defines . body)
              (test-end group-name)))))
 
     (define-syntax test-suite
@@ -147,7 +136,7 @@
                              (write-test-error err str)
                              (color red (get-output-string str)))))
                        (#t (fail-test name err)))
-                  (begin body ...
+                  (begin (inline-defines body ...)
                          (pass-test name))))))
 
     (define (fail . xs)
@@ -167,16 +156,18 @@
         ((assert-true msg condition)
            (when condition (fail msg)))))
 
+    (define current-test-comparator (make-parameter equal?))
+
     (define (assert-eq actual expected)
-      (unless (eq? actual expected)
-        (fail (form->indent actual) (form->indent expected))))
+      (parameterize ((current-test-comparator eq?))
+        (assert-equal actual expected)))
 
     (define (assert-eqv actual expected)
-      (unless (eqv? actual expected)
-        (fail (form->indent actual) (form->indent expected))))
+      (parameterize ((current-test-comparator eqv?))
+        (assert-equal actual expected)))
 
     (define (assert-equal actual expected)
-      (unless (equal? actual expected)
+      (unless ((current-test-comparator) actual expected)
         (fail (form->indent actual) (form->indent expected))))
 
     (define (assert-approximate actual expected error)
