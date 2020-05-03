@@ -390,11 +390,10 @@
             ((_ subject ((arg mapped) . over) x body)
               (match-body-let (map (λ arg subject) mapped) over x body))
             ((_ subject () x body)
-              (let-syntax
-                ((sym? (syntax-rules ()
-                         ((sym? x) (let1 x subject body))
-                         ((sym? y) body))))
-                (sym? abracadabra))))))))
+              (let-syntax ((sym? (syntax-rules ()
+                                   ((_ x) x)
+                                   ((_ y) body))))
+                (sym? (let1 x subject body)))))))))
 
   (begin
     (define-syntax match-lambda-body
