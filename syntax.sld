@@ -1,38 +1,19 @@
 (define-library (schemepunk syntax)
-  (export λ
-          ->
-          ->>
-          as->
-          λ->
-          λ->>
-          let1
-          let1-values
+  (export -> ->> as->
+          λ λ-> λ->>
+          let1 let1-values
           inline-defines
-          one-of
-          none-of
-          compl
-          dotimes
-          with-input-from-string
-          with-output-to-string
-          and-let*
-          receive
-          cut
-          cute
-          format
-          assume
-          match
-          match?
-          match-lambda
-          match-lambda*
-          matchλ
-          match-let
-          match-let*
-          match-letrec
-          match-let1
+          one-of none-of compl dotimes
+
+          with-input-from-string with-output-to-string
+          and-let* receive cut cute format assume
+
+          match match?
+          match-lambda match-lambda* matchλ
+          match-let match-let* match-letrec match-let1
           match-guard)
 
   (import (scheme base)
-          (scheme cxr)
           (scheme write))
 
   (cond-expand
