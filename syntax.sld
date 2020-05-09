@@ -2,7 +2,7 @@
   (export -> ->> as->
           λ λ-> λ->>
           let1 let1-values
-          inline-defines
+          inline-defines syntax-symbol-case
           one-of none-of compl dotimes
 
           with-input-from-string with-output-to-string
@@ -151,6 +151,75 @@
               (unless ok?
                 (error "invalid assumption" (list 'ok? . msgs)))))))))
 
+  ; Gerbil Scheme is a special case for several macro definitions.
+  ; It doesn't allow _ as a macro keyword[1], and it has inconsistent support
+  ; for the let-syntax trick for distinguishing symbols in macros.
+  ;
+  ; What it *does* support is syntax-rules fenders[2]. Some Schemes allow
+  ; syntax-rules clauses of the form (<pattern> <guard> <expression>), where
+  ; <guard> is a boolean expression. This isn't part of R7RS, but we can use it
+  ; in Gerbil to check for underscores and literal identifiers.
+  ;
+  ; [1]: https://github.com/vyzo/gerbil/issues/413
+  ; [2]: http://www.r6rs.org/r6rs-editors/2006-August/001680.html
+  (cond-expand
+    (gerbil
+      (import (only (gerbil core) syntax underscore? identifier?))
+      (begin
+        (define-syntax syntax-symbol-case
+          (syntax-rules ()
+            ((_ symbol . clauses)
+              (%syntax-symbol-case symbol clauses ()))))
+
+        (define-syntax %syntax-symbol-case
+          (syntax-rules (underscore identifier else)
+            ((_ symbol () clauses)
+              (let-syntax ((symbol-case (syntax-rules () . clauses)))
+                (symbol-case symbol)))
+            ((_ symbol ((underscore result) . rest) (clauses ...))
+              (%syntax-symbol-case symbol
+                                   rest
+                                   (clauses ... ((_ x) (underscore? (syntax x)) result))))
+            ((_ symbol ((identifier result) . rest) (clauses ...))
+              (%syntax-symbol-case symbol
+                                   rest
+                                   (clauses ... ((_ x) (identifier? (syntax x)) result))))
+            ((_ symbol ((else result)) (clauses ...))
+              (%syntax-symbol-case symbol () (clauses ... ((_ _) result))))))))
+    (else
+      (begin
+        (define-syntax syntax-symbol-case
+          (syntax-rules ()
+            ((_ symbol . clauses)
+              (%syntax-symbol-case symbol clauses () #f _))))
+
+        (define-syntax %syntax-symbol-case
+          (syntax-rules (underscore identifier else)
+            ((_ symbol () clauses identifier-clause __)
+              (let-syntax ((symbol-case (syntax-rules (__) . clauses)))
+                (symbol-case symbol identifier-clause)))
+            ((_ symbol ((underscore result) . rest) (clauses ...) identifier-clause __)
+              (%syntax-symbol-case symbol
+                                   rest
+                                   ; Unfortunately, Kawa macros aren't completely hygenic!
+                                   ; Recursive macro definitions leak symbol names,
+                                   ; so using %__1 or %__2 inside this macro could cause errors.
+                                   (clauses ... ((_ __ %__2) result))
+                                   identifier-clause
+                                   __))
+            ((_ symbol ((identifier result) . rest) (clauses ...) _ __)
+              (%syntax-symbol-case symbol
+                                   rest
+                                   (clauses ... ((_ %__1 symbol) symbol))
+                                   result
+                                   __))
+            ((_ symbol ((else result)) (clauses ...) identifier-clause __)
+              (%syntax-symbol-case symbol
+                                   ()
+                                   (clauses ... ((_ %__1 %__2) result))
+                                   identifier-clause
+                                   __)))))))
+
   (begin
     (define-syntax ->
       (syntax-rules ()
@@ -250,7 +319,7 @@
     ;; all supported Schemes.
     ;;
     ;; Notably, this version of match does allow `...` as an ellipsis, because
-    ;; Gerbil does not support alternate ellipsis symbols in syntax-rules[1].
+    ;; Gerbil does not support alternate ellipsis symbols in syntax-rules[3].
     ;; (And because, even in other Schemes, using an alternate ellipsis is
     ;; tricky and difficult to make work.)
     ;; Valid ellipsis symbols are `___` and `…`.
@@ -258,7 +327,7 @@
     ;; This is a from-scratch reimplementation that builds a cond expression.
     ;; The version in match-simple.scm breaks Kawa compilation for some reason.
     ;;
-    ;; [1]: https://github.com/vyzo/gerbil/issues/412
+    ;; [3]: https://github.com/vyzo/gerbil/issues/412
 
     (define-syntax match
       (syntax-rules (else)
@@ -306,12 +375,10 @@
           (and (vector? subject)
                (match? (vector->list subject) (pat ...))))
         ((_ subject x)
-          ; This magic expression comes from Alex Shinn's match-simple.scm.
-          ; It tells symbols apart from other literals, in pure hygenic R7RS!
-          (let-syntax ((sym? (syntax-rules ()
-                               ((sym? x) #t)
-                               ((sym? y) (equal? subject x)))))
-            (sym? abracadabra)))))
+          (syntax-symbol-case x
+            (underscore #t)
+            (identifier #t)
+            (else (equal? subject x))))))
 
     (define-syntax match-body
       (syntax-rules (? quote quasiquote unquote unquote-splicing and or not ___ …)
@@ -339,44 +406,20 @@
             (match-body (cdr subject) over tl body)))
         ((_ subject over #(pat ...) body)
           (match-body (vector->list subject) over (pat ...) body))
-        ((_ subject over name body) (match-body-let subject over name body)))))
+        ((_ subject over name body) (match-body-let subject over name body))))
 
-  ; Gerbil Scheme is a special case for this macro. It doesn't allow _ as
-  ; a macro keyword[2], and it has inconsistent support for the let-syntax
-  ; trick that this macro depends on.
-  ;
-  ; What it *does* support is syntax-rules fenders[3]. Some Schemes allow
-  ; syntax-rules clauses of the form (<pattern> <guard> <expression>), where
-  ; <guard> is a boolean expression. This isn't part of R7RS, but we can use it
-  ; in Gerbil to check for underscores and literal identifiers.
-  ;
-  ; [2]: https://github.com/vyzo/gerbil/issues/413
-  ; [3]: http://www.r6rs.org/r6rs-editors/2006-August/001680.html
-  (cond-expand
-    (gerbil
-      (import (only (gerbil core) defrules syntax underscore? identifier?))
-      (begin
-        (defrules match-body-let ()
-          ((_ _ _ x body) (underscore? (syntax x)) body)
-          ((_ subject ((arg mapped) . over) x body) (identifier? (syntax x))
-            (match-body-let (map (λ arg subject) mapped) over x body))
-          ((_ subject () x body) (identifier? (syntax x))
-            (let1 x subject body))
-          ((_ _ _ _ body) body))))
-    (else
-      (begin
-        (define-syntax match-body-let
-          (syntax-rules (_)
-            ((_ subject over _ body) body)
-            ((_ subject ((arg mapped) . over) x body)
-              (match-body-let (map (λ arg subject) mapped) over x body))
-            ((_ subject () x body)
-              (let-syntax ((sym? (syntax-rules ()
-                                   ((_ x) x)
-                                   ((_ y) body))))
-                (sym? (let1 x subject body)))))))))
+    (define-syntax match-body-let
+      (syntax-rules ()
+        ((_ subject ((arg mapped) . over) x body)
+          (syntax-symbol-case x
+            (underscore body)
+            (else (match-body-let (map (λ arg subject) mapped) over x body))))
+        ((_ subject () x body)
+          (syntax-symbol-case x
+            (underscore body)
+            (identifier (let1 x subject body))
+            (else body)))))
 
-  (begin
     (define-syntax match-lambda-body
       (syntax-rules ()
         ((_ () args body) (lambda args body))
