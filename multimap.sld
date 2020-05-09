@@ -5,14 +5,14 @@
           multimap->mapping multimap-key-comparator multimap-value-comparator
           multimap-copy
           multimap-ref
-          multimap-adjoin multimap-adjoin!
-          multimap-delete-key multimap-delete-key!
+          multimap-adjoin multimap-adjoin!  multimap-adjoin-set multimap-adjoin-set!
+          multimap-delete-key multimap-delete-key! multimap-clear!
           multimap-delete-value multimap-delete-value!
-          multimap-union multimap-union!
-          multimap-contains?
+          multimap-union multimap-union! multimap-difference
+          multimap-contains? multimap-contains-key?
           multimap-keys
           multimap-value-sets multimap-values
-          multimap-key-count multimap-value-count)
+          multimap-key-count multimap-value-count multimap-empty?)
 
   (import (scheme base)
           (schemepunk syntax)
@@ -68,6 +68,23 @@
           (λ() (set (multimap-value-comparator mmap)))))
       mmap)
 
+    (define (multimap-adjoin-set mmap key vals)
+      (assume (multimap? mmap))
+      (assume (set? vals))
+      (assume (eq? (multimap-value-comparator mmap) (set-element-comparator vals)))
+      (-> (multimap->mapping mmap)
+          (mapping-update key (λ x x) (λ() (set-copy vals)) (cut set-union <> vals))
+          (make-multimap (multimap-value-comparator mmap))))
+
+    (define (multimap-adjoin-set! mmap key vals)
+      (assume (multimap? mmap))
+      (assume (set? vals))
+      (assume (eq? (multimap-value-comparator mmap) (set-element-comparator vals)))
+      (set-multimap-mapping! mmap
+        (-> (multimap->mapping mmap)
+            (mapping-update! key (λ x x) (λ() (set-copy vals)) (cut set-union! <> vals))))
+      mmap)
+
     (define (multimap-delete-key mmap key)
       (assume (multimap? mmap))
       (make-multimap
@@ -101,28 +118,38 @@
     (define (multimap-union lhs rhs)
       (assume (multimap? lhs))
       (assume (multimap? rhs))
-      (make-multimap
-        (mapping-fold
-          (λ(k vs m)
-            (mapping-update m k
-              (cut set-union <> vs)
-              (λ() (set (multimap-value-comparator lhs)))))
-          (multimap->mapping lhs)
-          (multimap->mapping rhs))
-        (multimap-value-comparator lhs)))
+      (assume (eq? (multimap-key-comparator lhs) (multimap-key-comparator rhs)))
+      (assume (eq? (multimap-value-comparator lhs) (multimap-value-comparator rhs)))
+      (mapping-fold
+        (λ(k vs m) (multimap-adjoin-set m k vs))
+        lhs
+        (multimap->mapping rhs)))
 
     (define (multimap-union! lhs rhs)
       (assume (multimap? lhs))
       (assume (multimap? rhs))
-      (set-multimap-mapping! lhs
+      (assume (eq? (multimap-key-comparator lhs) (multimap-key-comparator rhs)))
+      (assume (eq? (multimap-value-comparator lhs) (multimap-value-comparator rhs)))
+      (mapping-fold
+        (λ(k vs m) (multimap-adjoin-set! m k vs))
+        lhs
+        (multimap->mapping rhs)))
+
+    (define (multimap-difference lhs rhs)
+      (assume (multimap? lhs))
+      (assume (multimap? rhs))
+      (make-multimap
         (mapping-fold
           (λ(k vs m)
-            (mapping-update! m k
-              (cut set-union! <> vs)
-              (λ() (set (multimap-value-comparator lhs)))))
-          (multimap->mapping lhs)
-          (multimap->mapping rhs)))
-      lhs)
+            (let1 new-set (set-difference vs (multimap-ref rhs k))
+              (if (set-empty? new-set) m (mapping-set! m k new-set))))
+          (mapping (multimap-key-comparator lhs))
+          (multimap->mapping lhs))
+        (multimap-value-comparator lhs)))
+
+    (define (multimap-contains-key? mmap key)
+      (assume (multimap? mmap))
+      (mapping-contains? (multimap->mapping mmap) key))
 
     (define (multimap-contains? mmap key value)
       (assume (multimap? mmap))
@@ -150,4 +177,12 @@
       (assume (multimap? mmap))
       (->> (multimap-value-sets mmap)
            (map set-size)
-           (fold + 0)))))
+           (fold + 0)))
+
+    (define (multimap-empty? mmap)
+      (assume (multimap? mmap))
+      (mapping-empty? (multimap->mapping mmap)))
+
+    (define (multimap-clear! mmap)
+      (assume (multimap? mmap))
+      (set-multimap-mapping! mmap (mapping (multimap-key-comparator mmap))))))

@@ -25,6 +25,12 @@
     (multimap-adjoin! mmap "foo" "qux")
     (assert-equal (set-size (multimap-ref mmap "foo")) 3))
 
+  (test "insert and get multiple values with adjoin-set"
+    (define mmap (make-mmap))
+    (multimap-adjoin! mmap "foo" "foo")
+    (multimap-adjoin-set! mmap "foo" (set cmp "bar" "baz" "qux"))
+    (assert-equal (set-size (multimap-ref mmap "foo")) 4))
+
   (test "insert and get multiple keys"
     (define mmap (make-mmap))
     (multimap-adjoin! mmap "foo" "bar")
@@ -42,6 +48,11 @@
       (multimap-adjoin! "foo" "bar")
       (multimap-adjoin! "foo" "baz")
       (multimap-adjoin! "foo" "qux")))
+    (assert-equal (set-size (multimap-ref mmap "foo")) 3))
+
+  (test "insert and get multiple values with adjoin-set (immutable)"
+    (define mmap (-> (make-mmap)
+      (multimap-adjoin-set "foo" (set cmp "bar" "baz" "qux"))))
     (assert-equal (set-size (multimap-ref mmap "foo")) 3))
 
   (test "insert and get multiple keys (immutable)"
@@ -134,4 +145,19 @@
     (assert-equal (set-size (multimap-ref b "foo")) 2)
     (assert-equal (set-size (multimap-ref b "bar")) 1)
     (assert-equal (set-size (multimap-ref c "foo")) 3)
-    (assert-equal (set-size (multimap-ref c "bar")) 1)))
+    (assert-equal (set-size (multimap-ref c "bar")) 1))
+
+  (test "difference of maps"
+    (define a (make-mmap))
+    (define b (make-mmap))
+    (multimap-adjoin! a "foo" "bar")
+    (multimap-adjoin! a "foo" "baz")
+    (multimap-adjoin! a "bar" "fred")
+    (multimap-adjoin! a "baz" "waldo")
+    (multimap-adjoin! b "foo" "bar")
+    (multimap-adjoin! b "foo" "qux")
+    (multimap-adjoin! b "bar" "fred")
+    (define c (multimap-difference a b))
+    (assert-equal (set->list (multimap-ref c "foo")) (list "baz"))
+    (assert-true (set-empty? (multimap-ref c "bar")))
+    (assert-equal (set->list (multimap-ref c "baz")) (list "waldo"))))
