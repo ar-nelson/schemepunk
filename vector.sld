@@ -32,6 +32,13 @@
 
   (cond-expand
     (chicken (import (srfi 133)))
+    (chibi
+      (import (rename (srfi 133) (vector-every %vector-every)))
+      (begin
+        ; Chibi bug: vector-every fails on empty vector
+        (define (vector-every pred? . vecs)
+          (define len (apply min (map vector-length vecs)))
+          (or (zero? len) (apply %vector-every (cons pred? vecs))))))
     ((library (scheme vector)) (import (scheme vector)))
     ((library (srfi 133)) (import (srfi 133)))
     ((library (std srfi 133)) (import (std srfi 133)))
