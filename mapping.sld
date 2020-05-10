@@ -40,13 +40,16 @@
   (import (scheme base)
           (scheme case-lambda)
           (schemepunk syntax)
-          (schemepunk list))
+          (schemepunk list)
+          (schemepunk comparator))
 
   (cond-expand
     (gauche
       ; Gauche is the only R7RS whose 146 is faster than (schemepunk btree),
       ; though it cheats by using a HAMT, making (srfi 146) = (srfi 146 hash).
-      (import (rename (srfi 146) (mapping=? %mapping=?%))
+      (import (rename (srfi 146) (mapping=? %mapping=?)
+                                 (make-mapping-comparator %make-mapping-comparator)
+                                 (mapping-comparator %mapping-comparator))
               (only (gauche base) <tree-map> define-method object-equal?)
               (only (gauche treeutil) tree-map-compare-as-sequences))
 
@@ -56,15 +59,36 @@
         (define (mapping=? value-comparator x . xs)
           (define key-comparator (mapping-key-comparator x))
           (and (every (λ-> mapping-key-comparator (eq? key-comparator)) xs)
-               (apply %mapping=?% `(,value-comparator ,x ,@xs))))
+               (apply %mapping=? `(,value-comparator ,x ,@xs))))
 
         ; Gauche 0.9.6's tree map implementation has a typo in its comparator,
         ; so we monkey-patch it with dynamic methods.
         (define-method object-equal? ((a <tree-map>) (b <tree-map>))
-          (zero? (tree-map-compare-as-sequences a b)))))
+          (zero? (tree-map-compare-as-sequences a b)))
+
+        ; Gauche tree maps are not hashable, and so can't be put in sets.
+        ; This is a problem for Datalog, so we add a hashing function.
+        (define (mapping-hash value-comparator m)
+          (define key-comparator (mapping-key-comparator m))
+          (mapping-fold (λ(k v h)
+                          (-> (modulo (* h 33) (hash-bound))
+                              (+ (comparator-hash key-comparator k))
+                              (* 33)
+                              (modulo (hash-bound))
+                              (+ (comparator-hash value-comparator v))))
+                        (hash-salt)
+                        m))
+
+        (define (make-mapping-comparator value-cmpr)
+          (make-comparator
+            mapping?
+            (cut mapping=? value-cmpr <> <>)
+            (cut tree-map-compare-as-sequences <> <> value-cmpr)
+            (cut mapping-hash value-cmpr <>)))
+
+        (define mapping-comparator (make-mapping-comparator (make-default-comparator)))))
     (else
-      (import (schemepunk comparator)
-              (schemepunk btree))
+      (import (schemepunk btree))
 
       (begin
         (define *not-found* (list 'not-found))
