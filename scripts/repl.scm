@@ -5,6 +5,7 @@
         (schemepunk vector)
         (schemepunk random)
         (schemepunk comparator)
+        (schemepunk sort)
         (schemepunk hash-table)
         (schemepunk set)
         (schemepunk generator)
