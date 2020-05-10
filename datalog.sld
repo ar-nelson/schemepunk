@@ -12,6 +12,7 @@
           (schemepunk vector)
           (schemepunk comparator)
           (schemepunk set)
+          (schemepunk mapping)
           (schemepunk multimap))
 
   (cond-expand
@@ -26,11 +27,7 @@
       (make-pair-comparator symbol-comparator number-comparator))
 
     (define identity-comparator
-      (make-comparator
-        (λ _ #t)
-        eq?
-        identity<?
-        identity-hash))
+      (make-comparator (λ _ #t) eq? identity<? identity-hash))
 
     (define default-value-comparator
       (make-sum-comparator symbol-comparator
@@ -48,6 +45,15 @@
       (make-var name)
       var?
       (name var->symbol))
+
+    (define (var<? x y)
+      (and (not (eq? x y))
+        (if (symbol=? (var->symbol x) (var->symbol y))
+          (identity<? x y)
+          (<? symbol-comparator (var->symbol x) (var->symbol y)))))
+
+    (define var-comparator
+      (make-comparator var? eq? var<? identity-hash))
 
     (define wildcard-var (make-var '_))
 
@@ -81,6 +87,8 @@
       (make-parameter default-value-comparator))
     (define db-tuple-comparator
       (make-parameter (tuple-comparator (db-comparator))))
+    (define db-var-map-comparator
+      (make-parameter (make-mapping-comparator (db-comparator))))
 
     (define (make-fact-map)
       (multimap predicate-comparator (db-tuple-comparator)))
@@ -99,6 +107,8 @@
     (define db-derived-facts
       (make-parameter (make-fact-map)))
     (define db-fact-dependencies
+      (make-parameter (make-fact-dependency-map)))
+    (define db-fact-dependents
       (make-parameter (make-fact-dependency-map)))
     (define db-rule-dependencies
       (make-parameter (multimap predicate-comparator predicate-comparator)))
@@ -120,6 +130,7 @@
                          (db-facts (make-fact-map))
                          (db-derived-facts (make-fact-map))
                          (db-fact-dependencies (make-fact-dependency-map))
+                         (db-fact-dependents (make-fact-dependency-map))
                          (db-rule-dependencies
                            (multimap predicate-comparator predicate-comparator))
                          (db-rule-negative-dependencies
@@ -127,7 +138,8 @@
             (thunk)))
         ((comparator thunk)
            (parameterize ((db-comparator comparator)
-                          (db-tuple-comparator (tuple-comparator comparator)))
+                          (db-tuple-comparator (tuple-comparator comparator))
+                          (db-var-map-comparator (make-mapping-comparator comparator)))
              (with-new-datalog-db thunk)))))
 
     (define with-new-datalog-facts
@@ -136,11 +148,13 @@
           (parameterize ((db-new-facts (make-fact-map))
                          (db-facts (make-fact-map))
                          (db-derived-facts (make-fact-map))
-                         (db-fact-dependencies (make-fact-dependency-map)))
+                         (db-fact-dependencies (make-fact-dependency-map))
+                         (db-fact-dependents (make-fact-dependency-map)))
             (thunk)))
         ((comparator thunk)
            (parameterize ((db-comparator comparator)
-                          (db-tuple-comparator (tuple-comparator comparator)))
+                          (db-tuple-comparator (tuple-comparator comparator))
+                          (db-var-map-comparator (make-mapping-comparator comparator)))
              (with-new-datalog-facts thunk)))))
 
     (define (with-extended-datalog-db thunk)
@@ -151,6 +165,7 @@
          (db-facts (multimap-copy (db-facts)))
          (db-derived-facts (multimap-copy (db-derived-facts)))
          (db-fact-dependencies (multimap-copy (db-fact-dependencies)))
+         (db-fact-dependents (multimap-copy (db-fact-dependents)))
          (db-rule-dependencies (multimap-copy (db-rule-dependencies)))
          (db-rule-negative-dependencies (multimap-copy (db-rule-negative-dependencies))))
         (thunk)))
@@ -159,7 +174,8 @@
       (parameterize ((db-new-facts (multimap-copy (db-new-facts)))
                      (db-facts (multimap-copy (db-facts)))
                      (db-derived-facts (multimap-copy (db-derived-facts)))
-                     (db-fact-dependencies (multimap-copy (db-fact-dependencies))))
+                     (db-fact-dependencies (multimap-copy (db-fact-dependencies)))
+                     (db-fact-dependents (multimap-copy (db-fact-dependents))))
         (thunk)))
 
     (define-syntax let-datalog
@@ -178,9 +194,9 @@
           (cond
             ((not vars) #f)
             ((eq? wildcard-var p) vars)
-            ((var? p) (match (assq p vars)
-                        ((_ . y) (and (eqv? x y) vars))
-                        (else `((,p . ,x) ,@vars))))
+            ((var? p) (mapping-ref vars p
+                        (λ () (mapping-set vars p x))
+                        (λ y (and (eqv? x y) vars))))
             ((eqv? p x) vars)
             (else #f)))
         vars
@@ -188,7 +204,7 @@
         tuple))
 
     (define (var-subst params vars)
-      (vector-map (λ p (if (var? p) (cdr (assq p vars)) p)) params))
+      (vector-map (λ p (if (var? p) (mapping-ref vars p) p)) params))
 
     (define (with-arity predicate params)
       (cons predicate (vector-length params)))
@@ -215,11 +231,14 @@
           (->> (with-arity predicate params)
                (multimap-ref (db-derived-facts))
                set->list
-               (map (cut match-vars params <> '()))
+               (map (cute match-vars params <> (mapping var-comparator)))
                (filter (λ x x))
-               (map (cute map (if var-names
-                                (λ((k . v)) (cons (cdr (assq k var-names)) v))
-                                (λ x x)) <>))))
+               (map mapping->alist)
+               (map (cute map
+                          (if var-names
+                            (λ((k . v)) (cons (cdr (assq k var-names)) v))
+                            (λ x x))
+                          <>))))
         ((predicate params)
           (query-datalog predicate params #f))))
 
@@ -276,39 +295,53 @@
            (vector-any (cut multimap-contains-key? facts <>))))
 
     (define (generate-facts-from-rule! rule out)
-      (define (var=? a b) (and (eq? (car a) (car b)) (eq? (cdr a) (cdr b))))
       (define predicate (car (rule-head rule)))
       (define params (cdr (rule-head rule)))
       (define existing (multimap-ref (db-derived-facts) predicate))
-      (->> (rule-body rule)
-           (vector-fold
-             (λ(var-sets (apred . aparams))
-               (-> (append-map
-                     (λ vars
-                       (append-map
-                         (λ tuple
-                           (match (match-vars aparams tuple vars)
-                             (#f '())
-                             (vars+ (list vars+))))
-                         (set->list (multimap-ref (db-derived-facts) apred))))
-                     var-sets)
-                   (delete-duplicates! (cut lset= var=? <> <>))))
-             '(()))
-           (filter
-             (λ vars
-               (vector-every
-                 (λ((fn . args)) (apply fn (vector->list (var-subst args vars))))
-                 (rule-guards rule))))
-           (remove
-             (λ vars
-               (vector-any
-                 (λ((apred . aparams))
-                   (multimap-contains? (db-derived-facts) apred (var-subst aparams vars)))
-                 (rule-negatives rule))))
-           (map (λ->> (var-subst params)))
-           (for-each (λ tuple
-             (unless (set-contains? existing tuple)
-               (multimap-adjoin! out predicate tuple))))))
+      (define fact-cmp (multimap-value-comparator (db-fact-dependencies)))
+      (define var-map-deps (multimap (db-var-map-comparator) fact-cmp))
+      (->>
+        (vector-fold
+          (λ(var-maps (apred . aparams))
+            (define tuples (multimap-ref (db-derived-facts) apred))
+            (define new-var-maps (set (db-var-map-comparator)))
+            (set-for-each
+              (λ vars
+                (set-for-each
+                  (λ tuple
+                    (and-let* ((matched (match-vars aparams tuple vars)))
+                      (set-adjoin! new-var-maps matched)
+                      (when (multimap-contains? (db-facts) apred tuple)
+                        (multimap-adjoin! var-map-deps matched (cons apred tuple))
+                        (multimap-adjoin-set! var-map-deps
+                                              matched
+                                              (multimap-ref (db-fact-dependencies)
+                                                            (cons apred tuple))))))
+                  tuples))
+              var-maps)
+            new-var-maps)
+          (set (db-var-map-comparator) (mapping var-comparator))
+          (rule-body rule))
+        (set-for-each
+          (λ vars
+            (and
+              (vector-every
+                (λ((fn . args)) (apply fn (vector->list (var-subst args vars))))
+                (rule-guards rule))
+              (vector-every
+                (λ((apred . aparams))
+                  (not (multimap-contains? (db-derived-facts)
+                                           apred
+                                           (var-subst aparams vars))))
+                (rule-negatives rule))
+              (let1 tuple (var-subst params vars)
+                (unless (set-contains? existing tuple)
+                  (let1 deps (multimap-ref var-map-deps vars)
+                    (multimap-adjoin-set! (db-fact-dependencies) (cons predicate tuple) deps)
+                    (set-for-each
+                      (cute multimap-adjoin! (db-fact-dependents) <> (cons predicate tuple))
+                      deps))
+                  (multimap-adjoin! out predicate tuple))))))))
 
     (define (update-rule-dependencies! deps neg-deps rules)
       ; Direct links
