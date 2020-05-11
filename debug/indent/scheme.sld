@@ -1,10 +1,10 @@
 (define-library (schemepunk debug indent scheme)
-  (export form->indent
+  (export form->indent list->indents
+          register-datatype-debug-writer!
 
           color-scheme-list
           color-scheme-vector
-          color-scheme-set
-          color-scheme-hash-table
+          color-scheme-structure
           color-scheme-symbol
           color-scheme-string
           color-scheme-number
@@ -15,9 +15,6 @@
           (scheme write)
           (schemepunk syntax)
           (schemepunk list)
-          (schemepunk vector)
-          (schemepunk set)
-          (schemepunk hash-table)
           (schemepunk term-colors)
           (schemepunk debug indent))
 
@@ -50,13 +47,21 @@
   (begin
     (define color-scheme-list (make-parameter cyan))
     (define color-scheme-vector (make-parameter cyan))
-    (define color-scheme-set (make-parameter yellow))
-    (define color-scheme-hash-table (make-parameter yellow))
+    (define color-scheme-structure (make-parameter yellow))
     (define color-scheme-symbol (make-parameter white))
     (define color-scheme-string (make-parameter green))
     (define color-scheme-number (make-parameter magenta))
     (define color-scheme-record (make-parameter yellow))
     (define color-scheme-special (make-parameter red))
+
+    (define *datatype-debug-writers* '())
+
+    (define (register-datatype-debug-writer! type-test? datum->indent)
+      (assume (procedure? type-test?))
+      (assume (procedure? datum->indent))
+      (set! *datatype-debug-writers*
+        (cons (cons type-test? datum->indent)
+              *datatype-debug-writers*)))
 
     (define (list->indents xs)
       (if (proper-list? xs)
@@ -89,23 +94,6 @@
              (color (color-scheme-vector) "#(")
              (list->indents (vector->list form))
              (color (color-scheme-vector) ")")))
-        ((? set?)
-           (make-indent-group
-             (color (color-scheme-set) "#<[")
-             (list->indents (set->list form))
-             (color (color-scheme-set) "]>")))
-        ((? hash-table?)
-           (make-indent-group
-             (color (color-scheme-hash-table) "#<{")
-             (map (λ x (make-indent-group
-                         (make-indent-group
-                           #f
-                           (list (form->indent (car x)))
-                           (color (color-scheme-hash-table) ":"))
-                         (list (form->indent (cdr x)))
-                         #f))
-                  (hash-table->alist form))
-             (color (color-scheme-hash-table) "}>")))
         ((? symbol?) (color (color-scheme-symbol) (symbol->string form)))
         ((? string?)
            (let1 str (open-output-string)
@@ -113,6 +101,8 @@
              (color (color-scheme-string) (get-output-string str))))
         ((? number?)
            (color (color-scheme-number) (number->string form)))
+        ((? (λ y (any (λ x ((car x) y)) *datatype-debug-writers*)))
+          ((cdr (find (λ x ((car x) form)) *datatype-debug-writers*)) form))
         ((? record?)
            (or
              (and-let* ((rtd (record-rtd form))

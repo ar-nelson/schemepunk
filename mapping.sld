@@ -41,7 +41,9 @@
           (scheme case-lambda)
           (schemepunk syntax)
           (schemepunk list)
-          (schemepunk comparator))
+          (schemepunk comparator)
+          (schemepunk debug indent)
+          (schemepunk debug indent scheme))
 
   (cond-expand
     (gauche
@@ -793,4 +795,20 @@
         ;; Comparators
 
         (define make-mapping-comparator make-btree-comparator)
-        (define mapping-comparator btree-comparator)))))
+        (define mapping-comparator btree-comparator))))
+
+  (begin
+    (define (mapping->indent mapping)
+      (make-indent-group
+        (color (color-scheme-structure) "#<mapping {")
+        (map (λ x (make-indent-group
+                    (make-indent-group
+                      #f
+                      (list (form->indent (car x)))
+                      (color (color-scheme-structure) ":"))
+                    (list (form->indent (cdr x)))
+                    #f))
+             (mapping->alist mapping))
+        (color (color-scheme-structure) "}>")))
+
+    (register-datatype-debug-writer! mapping? mapping->indent)))

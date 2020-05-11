@@ -33,6 +33,11 @@
     hash hash-by-identity
     hash-table-equivalence-function hash-table-hash-function)
 
+  (import (scheme base)
+          (schemepunk syntax)
+          (schemepunk debug indent)
+          (schemepunk debug indent scheme))
+
   (cond-expand
     (gauche
       ; Gauche's alist->hash-table in (scheme hash-table) has a bug,
@@ -56,4 +61,20 @@
                        (hash-table-set! %hash-table-set!)
                        (hash-table-delete! %hash-table-delete!)
                        (hash-table-fold %hash-table-fold)))
-       (include "polyfills/hash.scm"))))
+       (include "polyfills/hash.scm")))
+
+  (begin
+    (define (hash-table->indent table)
+      (make-indent-group
+        (color (color-scheme-structure) "#<hash-table {")
+        (map (λ x (make-indent-group
+                    (make-indent-group
+                      #f
+                      (list (form->indent (car x)))
+                      (color (color-scheme-structure) ":"))
+                    (list (form->indent (cdr x)))
+                    #f))
+             (hash-table->alist table))
+        (color (color-scheme-structure) "}>")))
+
+    (register-datatype-debug-writer! hash-table? hash-table->indent)))

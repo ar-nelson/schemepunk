@@ -55,6 +55,11 @@
    bag->set set->bag set->bag!
    bag->alist alist->bag)
 
+  (import (scheme base)
+          (schemepunk list)
+          (schemepunk debug indent)
+          (schemepunk debug indent scheme))
+
   (cond-expand
     (chicken (import (srfi 113)))
     ((or (library (scheme set))
@@ -69,9 +74,16 @@
       (export
         (rename the-set-comparator set-comparator)
         (rename the-bag-comparator bag-comparator))
-      (import (scheme base)
-              (schemepunk list)
-              (schemepunk comparator)
+      (import (schemepunk comparator)
               (schemepunk hash-table))
       (include "polyfills/sets.scm"
-               "polyfills/bags.scm"))))
+               "polyfills/bags.scm")))
+
+  (begin
+    (define (set->indent set)
+      (make-indent-group
+        (color (color-scheme-structure) "#<set [")
+        (list->indents (set->list set))
+        (color (color-scheme-structure) "]>")))
+
+    (register-datatype-debug-writer! set? set->indent)))

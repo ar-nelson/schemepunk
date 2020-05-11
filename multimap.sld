@@ -19,7 +19,9 @@
           (schemepunk list)
           (schemepunk comparator)
           (schemepunk set)
-          (schemepunk mapping))
+          (schemepunk mapping)
+          (schemepunk debug indent)
+          (schemepunk debug indent scheme))
 
   (begin
     (define-record-type Multimap
@@ -185,4 +187,23 @@
 
     (define (multimap-clear! mmap)
       (assume (multimap? mmap))
-      (set-multimap-mapping! mmap (mapping (multimap-key-comparator mmap))))))
+      (set-multimap-mapping! mmap (mapping (multimap-key-comparator mmap))))
+
+    (define (multimap->indent mmap)
+      (make-indent-group
+        (color (color-scheme-structure) "#<multimap {")
+        (map (λ x (make-indent-group
+                    (make-indent-group
+                      #f
+                      (list (form->indent (car x)))
+                      (color (color-scheme-structure) ":"))
+                    (list
+                      (make-indent-group
+                        (color (color-scheme-structure) "[")
+                        (list->indents (set->list (cdr x)))
+                        (color (color-scheme-structure) "]")))
+                    #f))
+             (mapping->alist (multimap->mapping mmap)))
+        (color (color-scheme-structure) "}>")))
+
+    (register-datatype-debug-writer! multimap? multimap->indent)))
