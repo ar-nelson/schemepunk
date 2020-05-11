@@ -1,1 +1,6 @@
 schemepunk
+*.slfasl
+*.c
+*.meta
+*.o
+*.so
