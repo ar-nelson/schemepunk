@@ -11,13 +11,10 @@
           list-merge!)
 
   (cond-expand
-    ((and (not chicken) (or (library (scheme sort))
-                            (library (srfi 132))
-                            (library (std srfi 132))))
+    ((and (not chicken) (or (library (scheme sort)) (library (srfi 132))))
       (cond-expand
         ((library (scheme sort)) (import (scheme sort)))
-        ((library (srfi 132)) (import (srfi 132)))
-        ((library (std srfi 132)) (import (srfi 132)))))
+        ((library (srfi 132)) (import (srfi 132)))))
     (else
        (import (scheme base))
        (cond-expand
