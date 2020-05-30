@@ -53,16 +53,9 @@ along with implementations of these libraries for Schemes that don't provide
 them by default. The implementations are in the `polyfills` directory; they are
 copied from either the SRFI documents or Chibi Scheme.
 
-`(schemepunk list)` is a special case. Because practically every Scheme
-implements SRFI 1, Schemepunk doesn't polyfill it, so `(schemepunk list)` is
-just an alias for your Scheme's SRFI 1 implementation, plus a few extra list
-functions.
-
-This is still useful for portability, because some Schemes (Gerbil) don't use
-the standard SRFI import naming conventions; you can't `(import (srfi 1))` in
-Gerbil.
-
-`(schemepunk list)` provides these additional list functions:
+Some of these modules provide extra functions and macros beyond those defined in
+their SRFIs. `(schemepunk list)`, in particular, provides these additional list
+functions:
 
 - `(snoc <list> <elem>)` is a reverse `cons`; it constructs a list by appending
   `elem` to the end of `list`.

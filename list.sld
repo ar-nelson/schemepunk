@@ -57,14 +57,23 @@
           topological-sort)
 
   (import (scheme base)
-          (scheme case-lambda)
           (schemepunk syntax))
 
   (cond-expand
     (chicken (import (srfi 1)))
     ((library (scheme list)) (import (scheme list)))
     ((library (srfi 1)) (import (srfi 1)))
-    ((library (std srfi 1)) (import (std srfi 1))))
+    ((library (std srfi 1)) (import (std srfi 1)))
+    (else
+      (import (scheme cxr))
+      (begin
+        (define-syntax :optional
+          (syntax-rules ()
+            ((_ x y) (if (pair? x) (car x) y))))
+        (define (check-arg pred val caller)
+          (let lp ((val val))
+            (if (pred val) val (lp (error "Bad argument" val pred caller))))))
+      (include "polyfills/srfi-1.scm")))
 
   (begin
     (define (snoc init last) (append init (list last)))
