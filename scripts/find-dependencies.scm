@@ -6,8 +6,6 @@
         (scheme write)
         (srfi 1))
 
-(define-syntax λ (syntax-rules () ((λ x . xs) (lambda (x) . xs))))
-
 (define filename-of cadr)
 (define dependencies-of cddr)
 
@@ -16,8 +14,11 @@
        (pair? clause)
        (case (car clause)
          ((only except prefix rename) (get-import (cadr clause)))
-         ((std scheme srfi rnrs r6rs chibi chicken gauche gerbil kawa class text ioctl) #f)
-         (else clause))))
+         ((std scheme srfi rnrs r6rs chibi chicken gauche gerbil kawa class) '())
+         (else
+           (if (file-exists? (module->filename clause))
+             (list clause)
+             '())))))
 
 (define (library-imports lib imports)
   (cond
@@ -25,85 +26,68 @@
     ((not (pair? (car lib))) (library-imports (cdr lib) imports))
     (else (library-imports (cdr lib)
       (case (caar lib)
-        ((import) (append imports (map get-import (cdar lib))))
+        ((import)
+          (append imports (append-map get-import (cdar lib))))
         ((cond-expand)
-           (append imports
-             (append-map (λ x (library-imports (cdr x) '()))
-                         (cdar lib))))
+          (append imports
+            (append-map (lambda (x) (library-imports (cdr x) '()))
+                        (cdar lib))))
         (else imports))))))
 
-(define (read-name-and-dependencies deps)
-  (define next (read))
-  (cond
-    ((eof-object? next) (values #f (filter (λ x x) deps)))
-    ((pair? next)
-       (case (car next)
-         ((define-library)
-            (values (cadr next)
-                    (filter (λ x x)
-                            (append deps (library-imports (cddr next) '())))))
-         ((import)
-            (read-name-and-dependencies
-              (append deps (map get-import (cdr next)))))
-         (else (read-name-and-dependencies deps))))
-    (else (read-name-and-dependencies deps))))
+(define (read-dependencies)
+  (delete-duplicates!
+    (let loop ((deps '()))
+      (define next (read))
+      (cond
+        ((eof-object? next) deps)
+        ((pair? next)
+           (case (car next)
+             ((define-library)
+               (append deps (library-imports (cddr next) '())))
+             ((import)
+               (loop (append deps (append-map get-import (cdr next)))))
+             (else (loop deps))))
+        (else (loop deps))))))
 
-(define (read-filenames-from-stdin accum)
-  (define file (read-line))
-  (if (eof-object? file)
-      accum
-      (read-filenames-from-stdin
-        (guard (e (#t (display (string-append "Error parsing file " file))
-                      (newline)
-                      (display e)
-                      (newline)
-                      accum))
-          (with-input-from-file file (lambda ()
-            (let-values (((name deps) (read-name-and-dependencies '())))
-              (if name `((,name ,file ,@deps) ,@accum) accum))))))))
+(define (module->filename module)
+  (string-append
+    (fold
+      (lambda (sym str)
+        (string-append str "/" (symbol->string sym)))
+      "."
+      module)
+    ".sld"))
 
-(define (tree-shake roots deps)
-  (define result roots)
-  (for-each (λ root
-    (for-each (λ dep
-      (when (not (assoc dep result))
-        (let ((next (assoc dep deps)))
-          (when next (set! result (cons next result))))))
-      root))
-    roots)
-  (if (equal? result roots) result (tree-shake result deps)))
+(define (read-transitive-dependencies filename module deps-so-far)
+  (let ((my-deps (with-input-from-file filename read-dependencies)))
+    (fold
+      (lambda (mod deps)
+        (if (assoc mod deps-so-far)
+          deps
+          (read-transitive-dependencies (module->filename mod) mod deps)))
+      (if module
+        (cons (cons module my-deps) deps-so-far)
+        deps-so-far)
+      my-deps)))
 
 (define (topological-sort deps so-far)
   (define (no-deps entry)
-    (every (λ dep (assoc dep so-far)) (dependencies-of entry)))
+    (every (lambda (dep) (assoc dep so-far)) (cdr entry)))
   (define next (find no-deps deps))
   (cond (next (topological-sort
-                (remove (λ x (equal? (car x) (car next))) deps)
+                (remove (lambda (x) (equal? (car x) (car next))) deps)
                 (cons next so-far)))
         ((null? deps) (reverse so-far))
-        (else (for-each
-                (λ dep
-                  (unless (assoc dep deps) (raise `(dependency-missing ,dep))))
-                (append-map dependencies-of deps))
-              (raise `(dependency-cycle ,deps)))))
+        (else (raise `(dependency-cycle ,deps)))))
 
 (define (main argv)
-  (define initial-deps
-    (fold (lambda (filename deps)
-            (let-values
-              (((_ new-deps)
-                  (with-input-from-file filename
-                    (lambda () (read-name-and-dependencies '())))))
-              (lset-union equal? deps new-deps)))
-          '()
-          (cdr argv)))
-  (define all-deps (read-filenames-from-stdin '()))
   (define deps
-    (tree-shake
-      (map (λ x (or (assoc x all-deps) (raise `(dependency-missing ,x))))
-           initial-deps)
-      all-deps))
+    (fold
+      (lambda (filename deps)
+        (read-transitive-dependencies filename #f deps))
+      '()
+      (cdr argv)))
   (for-each
-    (λ lib (display (filename-of lib)) (newline))
-    (topological-sort deps '()))
+    (lambda (lib) (display (module->filename (car lib))) (display " "))
+    (delete-duplicates! (topological-sort deps '())))
   0)

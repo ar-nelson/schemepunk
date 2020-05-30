@@ -1,6 +1,6 @@
 #!/bin/bash
 set -eou pipefail
-for lib in $(find . -name '*.sld' | "$(dirname "$0")/find-dependencies.scm" "$1"); do
+for lib in $("$(dirname "$0")/find-dependencies.scm" "$1"); do
   expect <<EOF
     set timeout -1
     spawn compile-larceny -I "$(pwd)" "$lib"
