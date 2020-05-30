@@ -28,8 +28,7 @@
 
   (import (scheme base)
           (scheme write)
-          (scheme process-context)
-          (schemepunk syntax))
+          (scheme process-context))
 
   (begin
     (define attr-bold      "1")
@@ -68,7 +67,7 @@
       (make-parameter
         (cond
           ((get-environment-variable "ANSI_ESCAPES_ENABLED")
-           => (λ s (not (equal? s "0"))))
+           => (lambda (s) (not (equal? s "0"))))
           (else
             (member (get-environment-variable "TERM")
                     '("xterm" "xterm-color" "xterm-256color" "rxvt" "kterm"
@@ -87,7 +86,7 @@
       (cond
         ((null? sgr-parameters) (write-char #\0 str))
         (else (write-string (car sgr-parameters) str)
-              (for-each (λ p (write-char #\; str) (write-string p str))
+              (for-each (lambda (p) (write-char #\; str) (write-string p str))
                         sgr-parameters)))
       (write-char #\m str)
       (string->color (get-output-string str)))
