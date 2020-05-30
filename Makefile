@@ -1,4 +1,4 @@
-.PHONY: test-chibi test-chicken test-gauche test-gerbil test-kawa test-larceny test-sagittarius test test-all clean watch
+.PHONY: test-chibi test-chicken test-gambit test-gauche test-gerbil test-kawa test-larceny test-sagittarius test test-all clean watch
 
 schemepunk:
 	mkdir schemepunk
@@ -14,6 +14,9 @@ test-chibi: schemepunk
 
 test-chicken: schemepunk
 	./scripts/test-chicken.sh "$$(./scripts/find-tests.sh)"
+
+test-gambit: schemepunk
+	./scripts/test-gambit.sh "$$(./scripts/find-tests.sh)"
 
 test-gauche: schemepunk
 	./scripts/test-gauche.sh "$$(./scripts/find-tests.sh)"
@@ -32,7 +35,7 @@ test-sagittarius: schemepunk
 
 test: test-gauche
 
-test-all: test-chibi test-gauche test-gerbil test-kawa test-larceny test-chicken test-sagittarius
+test-all: test-chibi test-gambit test-gauche test-gerbil test-kawa test-larceny test-chicken test-sagittarius
 
 clean:
 	rm -rf schemepunk
