@@ -5,6 +5,13 @@
           declare-datalog-rule declare-datalog-fact retract-datalog-fact
           define-datalog let-datalog query-datalog ?-)
 
+  (cond-expand
+    ((or gambit chicken)
+      (export %definition %head %head+var %body %resume-body %destruct
+              %atom %atom/query %atom/not %atom/? %atom/= %atom+var %atom+constant
+              %vector-reverse! %!=?))
+    (else))
+
   (import (scheme base)
           (scheme case-lambda)
           (schemepunk syntax)
@@ -178,7 +185,7 @@
             (define-datalog definitions ...)
             . body)))))
 
-    (define (!=? x y)
+    (define (%!=? x y)
       (not (=? (db-comparator) x y)))
 
     (define (match-vars params tuple vars)
@@ -384,6 +391,8 @@
                       (loop (vector-copy split 0 stratum-start)))
                 (error "Datalog stratification failed" rules)))))))
 
+    (define %vector-reverse! vector-reverse!)
+
     (define-syntax define-datalog
       (syntax-rules ()
         ((_ definition ...)
@@ -420,11 +429,11 @@
             ((var (syntax-error "Datalog variable occurs only in head:" var)) . vars)
             body))
         ((_ var predicate i o (before ...) ((other-var val) . after) body)
-          (let-syntax
-            ((same-var?
-               (syntax-rules (var)
-                 ((_ var) (%head predicate i o (before ... (var val) . after) body))
-                 ((_ _) (%head+var var predicate i o (before ... (other-var val)) after body)))))
+          (let ()
+            (define-syntax same-var?
+              (syntax-rules (var)
+                ((_ var) (%head predicate i o (before ... (var val) . after) body))
+                ((_ _) (%head+var var predicate i o (before ... (other-var val)) after body))))
             (same-var? other-var)))))
 
     (define-syntax %body
@@ -435,7 +444,7 @@
         ((_ () head vars deps neg-deps guards)
           (let vars
             (define g (vector . guards))
-            (vector-reverse! g)
+            (%vector-reverse! g)
             (declare-datalog-rule head (vector . deps) (vector . neg-deps) g)))
         ((_ ((? predicate . params) . rest) head vars deps neg-deps guards)
           (%atom/? params () vars guards predicate head rest deps neg-deps))
@@ -459,7 +468,7 @@
                          neg-deps))
             (else (syntax-error "First argument of datalog = must be a variable" lhs))))
         ((_ ((!= lhs rhs) . rest) head vars deps neg-deps guards)
-          (%atom/? (lhs rhs) () vars guards !=? head rest deps neg-deps))
+          (%atom/? (lhs rhs) () vars guards %!=? head rest deps neg-deps))
         ((_ ((predicate . params) . rest) head vars deps neg-deps guards)
           (%atom params () vars guards predicate head rest deps neg-deps))))
 
@@ -564,15 +573,15 @@
         ((_ var val continue i o vars () . state)
           (continue i o ((var val) . vars) . state))
         ((_ var val continue i o (before ...) (binding . after) . state)
-          (let-syntax
-            ((same-var?
-               (syntax-rules (var syntax-error)
-                 ((_ (var (syntax-error . _)))
-                   (continue i o (before ... (var val) . after) . state))
-                 ((_ (var val2))
-                   (continue i o (before ... (var val2) . after) . state))
-                 ((_ _)
-                   (%atom+var var val continue i o (before ... binding) after . state)))))
+          (let ()
+            (define-syntax same-var?
+              (syntax-rules (var syntax-error)
+                ((_ (var (syntax-error . _)))
+                  (continue i o (before ... (var val) . after) . state))
+                ((_ (var val2))
+                  (continue i o (before ... (var val2) . after) . state))
+                ((_ _)
+                  (%atom+var var val continue i o (before ... binding) after . state))))
             (same-var? binding)))))
 
     (define-syntax %atom+constant
@@ -580,15 +589,15 @@
         ((_ var val vars () . state)
           (%resume-body ((var val) . vars) . state))
         ((_ var val (before ...) (binding . after) . state)
-          (let-syntax
-            ((same-var?
-               (syntax-rules (var quote)
-                 ((_ (var '_))
-                   (syntax-error "Datalog variable is = to multiple constants" var))
-                 ((_ (var _))
-                   (%resume-body (before ...  (var val) . after) . state))
-                 ((_ _)
-                   (%atom+constant var val (before ... binding) after . state)))))
+          (let ()
+            (define-syntax same-var?
+              (syntax-rules (var quote)
+                ((_ (var '_))
+                  (syntax-error "Datalog variable is = to multiple constants" var))
+                ((_ (var _))
+                  (%resume-body (before ...  (var val) . after) . state))
+                ((_ _)
+                  (%atom+constant var val (before ... binding) after . state))))
             (same-var? binding)))))
 
     (define-syntax %destruct

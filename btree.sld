@@ -286,20 +286,20 @@
 
     (define (btree-delete btree key)
       (define comparator (btree-key-comparator btree))
-      (define-values (deleted new-root)
-        (node-delete (btree-root btree)
-                     key
-                     (comparator-equality-predicate comparator)
-                     (comparator-ordering-predicate comparator)
-                     (quotient (btree-max-size btree) 2)))
-      (if deleted
-        (make-btree comparator
-                    (btree-max-size btree)
-                    (if (and (zero? (node-size new-root))
-                             (node-children new-root))
-                      (vector-ref (node-children new-root) 0)
-                      new-root))
-        btree))
+      (let1-values (deleted new-root)
+          (node-delete (btree-root btree)
+                       key
+                       (comparator-equality-predicate comparator)
+                       (comparator-ordering-predicate comparator)
+                       (quotient (btree-max-size btree) 2))
+        (if deleted
+          (make-btree comparator
+                      (btree-max-size btree)
+                      (if (and (zero? (node-size new-root))
+                               (node-children new-root))
+                        (vector-ref (node-children new-root) 0)
+                        new-root))
+          btree)))
 
     (define (btree-delete! btree key)
       (define root (btree-root btree))
@@ -343,15 +343,15 @@
               popped)))))
 
     (define (btree-pop btree)
-      (define-values (popped new-root)
-        (node-pop-smallest (btree-root btree)
-                           (quotient (btree-max-size btree) 2)))
-      (values popped (make-btree (btree-key-comparator btree)
-                                 (btree-max-size btree)
-                                 (if (and (zero? (node-size new-root))
-                                          (node-children new-root))
-                                   (vector-ref (node-children new-root) 0)
-                                   new-root))))
+      (let1-values (popped new-root)
+          (node-pop-smallest (btree-root btree)
+                             (quotient (btree-max-size btree) 2))
+        (values popped (make-btree (btree-key-comparator btree)
+                                   (btree-max-size btree)
+                                   (if (and (zero? (node-size new-root))
+                                            (node-children new-root))
+                                     (vector-ref (node-children new-root) 0)
+                                     new-root)))))
 
     (define (btree-pop! btree)
       (define root (btree-root btree))
@@ -521,8 +521,8 @@
                    (btree-key-comparator y))
               "btree<?: different key comparators")
       (let loop ((x x) (y y))
-        (let*-values (((xe x2) (btree-pop x))
-                      ((ye y2) (btree-pop y)))
+        (let*-values/gambit-patched (((xe x2) (btree-pop x))
+                                     ((ye y2) (btree-pop y)))
           (cond
             ((not ye) #f)
             ((not xe) #t)

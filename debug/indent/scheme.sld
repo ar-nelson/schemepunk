@@ -42,7 +42,7 @@
               (define-syntax record-rtd (syntax-rules () ((_ . _) #f)))
               (define (rtd-name _) #f)
               (define (rtd-all-field-names _) #f)
-              (define (rtd-accessor _ _) #f))))
+              (define (rtd-accessor x y) #f))))
 
   (begin
     (define color-scheme-list (make-parameter cyan))

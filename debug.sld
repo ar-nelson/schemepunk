@@ -10,11 +10,11 @@
 
   (import (scheme base)
           (scheme write)
+          (schemepunk term-colors)
           (schemepunk debug indent)
           (schemepunk debug indent scheme)
           (schemepunk debug indent json)
-          (schemepunk debug report)
-          (schemepunk term-colors))
+          (schemepunk debug report))
 
   (begin
     (define (write-debug form)

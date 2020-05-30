@@ -28,7 +28,8 @@
 
     vector-filter)
 
-  (import (scheme base))
+  (import (scheme base)
+          (schemepunk syntax))
 
   (cond-expand
     (chicken (import (srfi 133)))
@@ -48,7 +49,7 @@
 
   (begin
     (define (vector-filter pred? vec)
-      (define-values (partitioned i) (vector-partition pred? vec))
-      (cond
-        ((= i (vector-length vec)) vec)
-        (else (vector-copy partitioned 0 i))))))
+      (let1-values (partitioned i) (vector-partition pred? vec)
+        (cond
+          ((= i (vector-length vec)) vec)
+          (else (vector-copy partitioned 0 i)))))))

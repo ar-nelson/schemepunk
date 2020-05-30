@@ -8,6 +8,10 @@
           with-input-from-string with-output-to-string
           and-let* receive cut cute format assume
 
+          guard/gambit-patched
+          let-values/gambit-patched
+          let*-values/gambit-patched
+
           match match?
           match-lambda match-lambda* matchλ
           match-let match-let* match-letrec match-let1
@@ -15,6 +19,24 @@
 
   (import (scheme base)
           (scheme write))
+
+  (cond-expand
+    ((or gambit chicken)
+      (export %match %match-body %match-body-let %match-lambda-body
+              %match-named-let %match-letrec-helper %match-guard))
+    (else))
+
+  (cond-expand
+    (gambit
+      (include "polyfills/gambit-r7rs.scm"))
+    (else
+      (begin
+        (define-syntax guard/gambit-patched
+          (syntax-rules () ((_ . xs) (guard . xs))))
+        (define-syntax let-values/gambit-patched
+          (syntax-rules () ((_ . xs) (let-values . xs))))
+        (define-syntax let*-values/gambit-patched
+          (syntax-rules () ((_ . xs) (let*-values . xs)))))))
 
   (cond-expand
     ((or chicken (library (srfi 2)))
@@ -46,9 +68,47 @@
   (cond-expand
     ((or chicken (library (srfi 26)))
       (import (srfi 26)))
+    (gambit
+      (begin
+        (define-macro (cut . args)
+          (let loop ((args args) (params '()) (call '()))
+            (if (null? args)
+              `(lambda ,(reverse params) ,(reverse call))
+              (case (car args)
+                ((<>)
+                  (let ((sym (gensym '<>)))
+                    (loop (cdr args) (cons sym params) (cons sym call))))
+                ((<...>)
+                  (let ((sym (gensym '<...>))
+                        (call (reverse call)))
+                    `(lambda (,@(reverse params) . ,sym)
+                       (apply ,(car call) (append (list ,@(cdr call)) ,sym)))))
+                (else
+                  (loop (cdr args) params (cons (car args) call)))))))
+
+        (define-macro (cute . args)
+          (let loop ((args args) (bindings '()) (params '()) (call '()))
+            (if (null? args)
+              `(let ,bindings (lambda ,(reverse params) ,(reverse call)))
+              (case (car args)
+                ((<>)
+                  (let ((sym (gensym '<>)))
+                    (loop (cdr args) bindings (cons sym params) (cons sym call))))
+                ((<...>)
+                  (let ((sym (gensym '<...>))
+                        (call (reverse call)))
+                    `(let ,bindings
+                       (lambda (,@(reverse params) . ,sym)
+                         (apply ,(car call) (append (list ,@(cdr call)) ,sym))))))
+                (else
+                  (let ((sym (gensym)))
+                    (loop (cdr args)
+                          `((,sym ,(car args)) ,@bindings)
+                          params
+                          (cons sym call))))))))))
     (else
       (begin
-        (define-syntax %cut%
+        (define-syntax %cut
           (syntax-rules (<> <...>)
             ((_ () params call)
               (lambda params call))
@@ -56,15 +116,15 @@
               (lambda (params ... . rest-slot)
                 (apply callee (append (list . args) rest-slot))))
             ((_ (<> . xs) (params ...) (call ...))
-              (%cut% xs (params ... slot) (call ... slot)))
+              (%cut xs (params ... slot) (call ... slot)))
             ((_ (x . xs) params (call ...))
-              (%cut% xs params (call ... x)))))
+              (%cut xs params (call ... x)))))
 
         (define-syntax cut
           (syntax-rules ()
-            ((_ . xs) (%cut% xs () ()))))
+            ((_ . xs) (%cut xs () ()))))
 
-        (define-syntax %cute%
+        (define-syntax %cute
           (syntax-rules (<> <...>)
             ((_ () pre-eval params call)
               (let pre-eval (lambda params call)))
@@ -73,13 +133,13 @@
                 (lambda (params ... . rest-slot)
                   (apply callee (append (list . args) rest-slot)))))
             ((_ (<> . xs) pre-eval (params ...) (call ...))
-              (%cute% xs pre-eval (params ... slot) (call ... slot)))
+              (%cute xs pre-eval (params ... slot) (call ... slot)))
             ((_ (x . xs) pre-eval params (call ...))
-              (%cute% xs ((evaluated x) . pre-eval) params (call ... evaluated)))))
+              (%cute xs ((evaluated x) . pre-eval) params (call ... evaluated)))))
 
         (define-syntax cute
           (syntax-rules ()
-            ((_ . xs) (%cute% xs () () ())))))))
+            ((_ . xs) (%cute xs () () ())))))))
 
   (cond-expand
     (kawa
@@ -96,7 +156,7 @@
                     (apply fprintf (cons str rest))
                     (get-output-string str)))
             (else (apply fprintf (cons destination rest)))))))
-    ((or chicken (library (srfi 28)))
+    ((and (not gambit) (or chicken (library (srfi 28))))
       (import (srfi 28)))
     (else
       (begin
@@ -186,6 +246,19 @@
                                    (clauses ... ((_ x) (identifier? (syntax x)) result))))
             ((_ symbol ((else result)) (clauses ...))
               (%syntax-symbol-case symbol () (clauses ... ((_ _) result))))))))
+    (gambit
+      (begin
+        (define-macro (syntax-symbol-case symbol clause . rest)
+          (case (car clause)
+            ((underscore)
+              (if (and (symbol? symbol) (symbol=? '_ symbol))
+                  (cadr clause)
+                  `(syntax-symbol-case ,symbol ,@rest)))
+            ((identifier)
+              (if (symbol? symbol)
+                  (cadr clause)
+                  `(syntax-symbol-case ,symbol ,@rest)))
+            (else (cadr clause))))))
     (else
       (begin
         (define-syntax syntax-symbol-case
@@ -259,7 +332,8 @@
 
     (define-syntax let1-values
       (syntax-rules ()
-        ((let1 names value . body) (let-values ((names value)) . body))))
+        ((let1 names value . body)
+          (let-values/gambit-patched ((names value)) . body))))
 
     (define-syntax inline-defines
       (syntax-rules (define define-values)
@@ -271,7 +345,7 @@
           (let ((name value))
             (inline-defines . rest)))
         ((_ (define-values names value) . rest)
-          (let-values ((names value))
+          (let-values/gambit-patched ((names value))
             (inline-defines . rest)))
         ((_ x . xs)
           (begin x (inline-defines . xs)))))
@@ -329,20 +403,30 @@
     ;;
     ;; [3]: https://github.com/vyzo/gerbil/issues/412
 
-    (define-syntax match
+    (define-syntax %match
       (syntax-rules (else)
-        ((match subject (pattern . body) ... (else . else-clause))
-          (let1 var subject
-            (cond
-              ((match? var pattern) (match-body var () pattern (begin . body))) ...
-              (else . else-clause))))
-        ((match subject (pattern . body) ...)
-          (let1 var subject
-            (cond
-              ((match? var pattern) (match-body var () pattern (begin . body))) ...
-              (else (error "match failed"
-                           var
-                           '(pattern ...))))))))
+        ((_ subject ((else . else-clause)) ((pattern . body) ...))
+          (cond
+            ((match? subject pattern)
+              (%match-body subject () pattern (begin . body))) ...
+            (else . else-clause)))
+        ((_ subject () ((pattern . body) ...))
+          (cond
+            ((match? subject pattern)
+               (%match-body subject () pattern (begin . body))) ...
+            (else (error "match failed"
+                         subject
+                         '(pattern ...)))))
+        ((_ subject (clause . rest) (clauses ...))
+          (%match subject rest (clauses ... clause)))))
+
+    (define-syntax match
+      (syntax-rules ()
+        ; This would be simpler if the pattern could contain an ellipsis before
+        ; the else clause, but (as of May 2020) Gambit R7RS doesn't support it.
+        ; Maybe this will be fixed by the time Gambit R7RS releases for real?
+        ((_ subject . clauses)
+          (let1 var subject (%match var clauses ())))))
 
     (define-syntax match?
       (syntax-rules (? quote quasiquote unquote unquote-splicing and or not ___ …)
@@ -380,59 +464,73 @@
             (identifier #t)
             (else (equal? subject x))))))
 
-    (define-syntax match-body
+    (define-syntax %match-body
       (syntax-rules (? quote quasiquote unquote unquote-splicing and or not ___ …)
         ((_ _ _ () body) body)
         ((_ _ _ 'x body) body)
-        ((_ subject over `,x body) (match-body subject over x body))
-        ((_ subject over `(,@x) body) (match-body subject over x body))
+        ((_ subject over `,x body) (%match-body subject over x body))
+        ((_ subject over `(,@x) body) (%match-body subject over x body))
         ((_ subject over `(hd . tl) body)
-          (match-body (car subject) over `hd
-            (match-body (cdr subject) over `tl body)))
+          (%match-body (car subject) over `hd
+            (%match-body (cdr subject) over `tl body)))
         ((_ _ _ `x body) body)
         ((_ _ _ (? _) body) body)
-        ((_ subject over (? _ name) body) (match-body-let subject over name body))
+        ((_ subject over (? _ name) body) (%match-body-let subject over name body))
         ((_ subject over (and pat ...) body)
-          (->> body (match-body subject over pat) ...))
+          (->> body (%match-body subject over pat) ...))
         ((_ subject over (or pat ...) body)
-          (->> body (match-body subject over pat) ...))
+          (->> body (%match-body subject over pat) ...))
         ((_ _ _ (not _) body) body)
         ((_ subject over (pat ___) body)
-          (match-body ellipsis ((ellipsis subject) . over) pat body))
+          (%match-body ellipsis ((ellipsis subject) . over) pat body))
         ((_ subject over (pat …) body)
-          (match-body ellipsis ((ellipsis subject) . over) pat body))
+          (%match-body ellipsis ((ellipsis subject) . over) pat body))
         ((_ subject over (hd . tl) body)
-          (match-body (car subject) over hd
-            (match-body (cdr subject) over tl body)))
+          (%match-body (car subject) over hd
+            (%match-body (cdr subject) over tl body)))
         ((_ subject over #(pat ...) body)
-          (match-body (vector->list subject) over (pat ...) body))
-        ((_ subject over name body) (match-body-let subject over name body))))
+          (%match-body (vector->list subject) over (pat ...) body))
+        ((_ subject over name body) (%match-body-let subject over name body))))
 
-    (define-syntax match-body-let
+    (define-syntax %match-body-let
       (syntax-rules ()
         ((_ subject ((arg mapped) . over) x body)
           (syntax-symbol-case x
             (underscore body)
-            (else (match-body-let (map (λ arg subject) mapped) over x body))))
+            (else (%match-body-let (map (λ arg subject) mapped) over x body))))
         ((_ subject () x body)
           (syntax-symbol-case x
             (underscore body)
             (identifier (let1 x subject body))
-            (else body)))))
+            (else body))))))
 
-    (define-syntax match-lambda-body
-      (syntax-rules ()
-        ((_ () args body) (lambda args body))
-        ((_ (pattern . rest) (args ...) body)
-          (match-lambda-body
-            rest
-            (args ... arg)
-            (match-body arg () pattern body)))))
+  (cond-expand
+    (gambit
+      ; Gambit syntax-rules isn't hygenic enough to define a parameter list
+      (begin
+        (define-macro (%match-lambda-body patterns _ body)
+          (let ((args (map (lambda (_) (gensym)) patterns)))
+            `(lambda ,args
+               ,(fold (lambda (pat arg expr) `(%match-body ,arg () ,pat ,expr))
+                      body
+                      patterns
+                      args))))))
+    (else
+      (begin
+        (define-syntax %match-lambda-body
+          (syntax-rules ()
+            ((_ () args body) (lambda args body))
+            ((_ (pattern . rest) (args ...) body)
+              (%match-lambda-body
+                rest
+                (args ... arg)
+                (%match-body arg () pattern body))))))))
 
+  (begin
     (define-syntax λ
       (syntax-rules ()
         ((λ (patterns ...) . body)
-          (match-lambda-body (patterns ...) () (begin . body)))
+          (%match-lambda-body (patterns ...) () (begin . body)))
         ((λ arg . body)
           (lambda (arg) . body))))
 
@@ -450,49 +548,58 @@
     (define-syntax match-let*
       (syntax-rules ()
         ((_ ((pat expr) . rest) . body)
-          (match-body expr () pat (match-let* rest . body)))
+          (%match-body expr () pat (match-let* rest . body)))
         ((_ () . body)
           (begin . body))))
 
     (define-syntax match-let
       (syntax-rules ()
         ((_ (vars ...) . body) (match-let* (vars ...) body))
-        ((_ loop . rest) (match-named-let loop () . rest))))
+        ((_ loop . rest) (%match-named-let loop () . rest))))
 
-    (define-syntax match-named-let
+    (define-syntax %match-named-let
       (syntax-rules ()
         ((_ loop ((pat expr var) ...) () . body)
           (let loop ((var expr) ...)
             (match-let ((pat var) ...)
               . body)))
         ((_ loop (v ...) ((pat expr) . rest) . body)
-          (match-named-let loop (v ... (pat expr tmp)) rest . body))))
+          (%match-named-let loop (v ... (pat expr tmp)) rest . body))))
 
     (define-syntax match-letrec
       (syntax-rules ()
-        ((_ vars . body) (match-letrec-helper () vars . body))))
+        ((_ vars . body) (%match-letrec-helper () vars . body))))
 
-    (define-syntax match-letrec-helper
+    (define-syntax %match-letrec-helper
       (syntax-rules ()
         ((_ ((pat expr var) ...) () . body)
           (letrec ((var expr) ...)
             (match-let ((pat var) ...)
               . body)))
         ((_ (v ...) ((pat expr) . rest) . body)
-          (match-letrec-helper (v ... (pat expr tmp)) rest . body))))
+          (%match-letrec-helper (v ... (pat expr tmp)) rest . body))))
 
     (define-syntax match-let1
       (syntax-rules ()
-        ((_ pat expr . body) (match-body expr () pat (begin . body)))))
+        ((_ pat expr . body) (%match-body expr () pat (begin . body)))))
 
     (define-syntax match-guard
+      (syntax-rules ()
+        ((_ (clauses ...) . body)
+          (%match-guard (clauses ...) () body))))
+
+    (define-syntax %match-guard
       (syntax-rules (else)
-        ((_ ((pattern . clause) ... (else . else-clause)) . body)
-          (guard (err ((match? err pattern)
-                        (match-body err () pattern (begin . clause))) ...
-                      (else . else-clause))
+        ((_ ((else . else-clause)) ((pattern . clause) ... ) body)
+          (guard/gambit-patched
+            (err ((match? err pattern)
+                   (%match-body err () pattern (begin . clause))) ...
+                 (else . else-clause))
             . body))
-        ((_ ((pattern . clause) ...) . body)
-          (guard (err ((match? err pattern)
-                        (match-body err () pattern (begin . clause))) ...)
-            . body))))))
+        ((_ () ((pattern . clause) ...) body)
+          (guard/gambit-patched
+            (err ((match? err pattern)
+                   (%match-body err () pattern (begin . clause))) ...)
+            . body))
+        ((_ (clause . rest) (clauses ...) body)
+          (%match-guard rest (clauses ... clause) body))))))

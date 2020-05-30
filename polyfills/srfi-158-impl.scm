@@ -245,7 +245,7 @@
                     ((null? (cdr gens)) (reverse (cons (car gens) gs)))
                     (else (loop (cddr gens)
                                 (cons (gmerge < (car gens) (cadr gens)) gs)))))))))
-    
+
 ;; gmap
 (define gmap
   (case-lambda
@@ -258,17 +258,18 @@
      (lambda ()
        (let ((items (map (lambda (x) (x)) gens)))
          (if (any eof-object? items) (eof-object) (apply proc items)))))))
-    
+
 ;; gcombine
 (define (gcombine proc seed . gens)
   (lambda ()
     (define items (map (lambda (x) (x)) gens))
     (if (any eof-object? items)
       (eof-object)
-      (let ()
-       (define-values (value newseed) (apply proc (append items (list seed))))
-       (set! seed newseed)
-       value))))
+      (call-with-values
+        (lambda () (apply proc (append items (list seed))))
+        (lambda (value newseed)
+          (set! seed newseed)
+          value)))))
 
 ;; gfilter
 (define (gfilter pred gen)
@@ -286,11 +287,13 @@
       (let loop ((item (gen)))
         (if (eof-object? item)
           item
-          (let-values (((yes newstate) (proc item state)))
-            (set! state newstate)
-            (if yes
-               item
-               (loop (gen)))))))))
+          (call-with-values
+            (lambda () (proc item state))
+            (lambda (yes newstate)
+              (set! state newstate)
+              (if yes
+                 item
+                 (loop (gen))))))))))
 
 
 

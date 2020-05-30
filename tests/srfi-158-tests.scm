@@ -24,7 +24,7 @@
     (test '(10 20 30) (generator->list (bytevector->generator (bytevector 10 20 30))))
     (define (for-each-digit proc n)
       (when (> n 0)
-        (let-values (((div rem) (truncate/ n 10)))
+        (let-values/gambit-patched (((div rem) (truncate/ n 10)))
           (proc rem)
           (for-each-digit proc div))))
      (test '(5 4 3 2 1) (generator->list

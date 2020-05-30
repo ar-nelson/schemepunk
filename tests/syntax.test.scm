@@ -79,7 +79,7 @@
     (test "match fail"
       (assert-equal
         "match failed"
-        (guard (e (#t (error-object-message e)))
+        (guard/gambit-patched (e (#t (error-object-message e)))
           (match 'bar ('foo "matched foo")))))
     (test "match destructuring"
       (assert-equal
@@ -159,6 +159,6 @@
           "no error"))
       (assert-equal
         "not caught"
-        (guard (e ((eqv? e 'a) "not caught"))
+        (guard/gambit-patched (e ((eqv? e 'a) "not caught"))
           (match-guard (('b "caught"))
             (raise 'a)))))))

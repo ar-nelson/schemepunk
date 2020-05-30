@@ -8,15 +8,20 @@
           test-eq test-eqv test-equal test-approximate
           current-test-comparator chibi-test-shim)
 
+  (cond-expand
+    (gambit
+      (export %test test-error? pass-test fail-test inline-defines test-error-handler))
+    (else))
+
   (import (scheme base)
           (scheme write)
           (scheme process-context)
           (scheme cxr)
           (schemepunk syntax)
           (only (schemepunk list) snoc last drop-right)
+          (schemepunk term-colors)
           (schemepunk debug)
-          (schemepunk debug indent)
-          (schemepunk term-colors))
+          (schemepunk debug indent))
 
   (cond-expand
     (chicken
@@ -46,6 +51,11 @@
               (error-message err)
               (error-irritants err)
               (error-trace err)))))
+    (gambit
+      (import (only (gambit) display-exception))
+      (begin
+        (define (test-error? e) (not (list? e)))
+        (define write-test-error display-exception)))
     (kawa
       (import (only (kawa reflect) instance?)
               (class java.lang Exception))
@@ -106,7 +116,7 @@
     (define-syntax test-group
       (syntax-rules ()
         ((_ name . body)
-           (let1 group-name name
+           (let ((group-name name))
              (test-begin group-name)
              (inline-defines . body)
              (test-end group-name)))))
@@ -127,17 +137,27 @@
       (write-colored red (string-append "✗ " name))
       (newline))
 
+    (define (test-error-handler name fn)
+      (guard/gambit-patched
+        (err ((test-error? err)
+               (fail-test name
+                 (let ((str (open-output-string)))
+                   (write-test-error err str)
+                   (color red (get-output-string str)))))
+             (#t (fail-test name err)))
+        (fn)
+        (pass-test name)))
+
+    ;; Gambit macros aren't hygenic, and `test` is redefined by chibi-test-shim.
+    ;; Referring to it as `%test` inside local macros avoids a name collision.
+    (define-syntax %test
+      (syntax-rules ()
+        ((_ name body ...)
+           (test-error-handler name (lambda () (inline-defines body ...))))))
+
     (define-syntax test
       (syntax-rules ()
-        ((test name body ...)
-           (guard (err ((test-error? err)
-                         (fail-test name
-                           (let ((str (open-output-string)))
-                             (write-test-error err str)
-                             (color red (get-output-string str)))))
-                       (#t (fail-test name err)))
-                  (begin (inline-defines body ...)
-                         (pass-test name))))))
+        ((_ name body ...) (%test name body ...))))
 
     (define (fail . xs)
       (raise `(test-failure ,@xs)))
@@ -178,50 +198,50 @@
 
     (define-syntax test-assert
       (syntax-rules ()
-        ((_ name expr) (test name (assert-true expr)))
-        ((_ expr) (test (format #f "~s" 'expr) (assert-true expr)))))
+        ((_ name expr) (%test name (assert-true expr)))
+        ((_ expr) (%test (format #f "~s" 'expr) (assert-true expr)))))
 
     (define-syntax test-eq
       (syntax-rules ()
         ((_ name expected actual)
-          (test name
+          (%test name
             (assert-eq actual expected)))
         ((_ expected actual)
-          (test (format #f "~s" 'actual)
+          (%test (format #f "~s" 'actual)
             (assert-eq actual expected)))))
 
     (define-syntax test-eqv
       (syntax-rules ()
         ((_ name expected actual)
-          (test name
+          (%test name
             (assert-eqv actual expected)))
         ((_ expected actual)
-          (test (format #f "~s" 'actual)
+          (%test (format #f "~s" 'actual)
             (assert-eqv actual expected)))))
 
     (define-syntax test-equal
       (syntax-rules ()
         ((_ name expected actual)
-          (test name
+          (%test name
             (assert-equal actual expected)))
         ((_ expected actual)
-          (test (format #f "~s" 'actual)
+          (%test (format #f "~s" 'actual)
             (assert-equal actual expected)))))
 
     (define-syntax test-approximate
       (syntax-rules ()
         ((_ name expected actual error)
-          (test name
+          (%test name
             (assert-approximate actual expected error)))
         ((_ expected actual error)
-          (test (format #f "~s" 'actual)
+          (%test (format #f "~s" 'actual)
             (assert-approximate actual expected error)))))
 
     (define-syntax test-error
       (syntax-rules ()
         ((_ name #t . body)
-          (test name
-            (guard (e ((not (failure? e)) #t))
+          (%test name
+            (guard/gambit-patched (e ((not (failure? e)) #t))
               (begin . body)
               (fail "did not raise error"))))
         ((_ name expr)
@@ -255,10 +275,10 @@
     (define-syntax chibi-test-shim
       (syntax-rules ()
         ((_ test-name . chibi-test-body)
-          (let-syntax
-            ((test-name
-               (syntax-rules ()
-                 ((_ . args) (test-equal . args)))))
+          (let ()
+            (define-syntax test-name
+              (syntax-rules ()
+                ((_ . args) (test-equal . args))))
             . chibi-test-body))))
 
     (define (end-test-runner)

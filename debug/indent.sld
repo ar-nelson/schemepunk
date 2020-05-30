@@ -29,10 +29,9 @@
                                    make-default-console
                                    query-screen-size))
       (begin (define (get-terminal-width)
-               (guard (e (#t 80))
-                 (let-values
-                   (((_ w) (call-with-console (make-default-console)
-                                              query-screen-size)))
+               (guard/gambit-patched (e (else 80))
+                 (let1-values (_ w)
+                              (call-with-console (make-default-console) query-screen-size)
                    w)))))
     (chibi
       (import (rename (chibi stty) (get-terminal-width %get-terminal-width%)))
@@ -41,7 +40,7 @@
     (gerbil
       (import (std misc process))
       (begin (define (get-terminal-width)
-               (or (guard (e (#t #f))
+               (or (guard/gambit-patched (e (else #f))
                      (read (open-input-string (run-process (list "tput" "cols")))))
                    80))))
     (else (begin (define (get-terminal-width) 80))))

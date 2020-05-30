@@ -168,7 +168,7 @@
                       ((X . c) (Y . c))))))
 
   (test "stratification cycle"
-    (guard (e ((not (failure? e)) #t))
+    (guard/gambit-patched (e ((not (failure? e)) #t))
       (let-datalog
         ((:- (foo X) (bar X))
          (:- (bar X) (baz X) (not (foo X))))

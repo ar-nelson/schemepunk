@@ -9,10 +9,11 @@
 
 (import (scheme base)
         (scheme read)
+        (scheme write)
+        (schemepunk syntax)
         (only (schemepunk list) unfold)
         (schemepunk generator)
         (schemepunk test))
-
 
 (chibi-test-shim test
   (cond-expand

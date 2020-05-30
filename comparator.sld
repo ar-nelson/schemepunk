@@ -39,6 +39,10 @@
           (schemepunk list))
 
   (cond-expand
+    (gambit (export %salt%))
+    (else))
+
+  (cond-expand
     ((or chicken chibi larceny)
       (import (srfi 128)
               (rename (only (srfi 69) hash-by-identity)

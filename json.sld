@@ -85,7 +85,7 @@
                                              "; expected :")))))
           ((key) (case c
              ((#\") (set-json-context-state! ctx 'colon)
-                    (let-values (((event value) (read-json-string ctx port)))
+                    (let1-values (event value) (read-json-string ctx port)
                       (values (case event ((string) 'key) (else event)) value)))
              ((#\}) (set-json-context-state! ctx
                       (if (null? (pop-stack! ctx)) 'value 'comma))
@@ -312,7 +312,7 @@
           (write-char #\{ port)
           (unless (null? json)
             (let loop ((xs json))
-              (let-values (((k v) (car+cdr (car xs))))
+              (let1-values (k v) (car+cdr (car xs))
                 (write-char #\" port)
                 (write-string (escape-json-string k) port)
                 (write-string "\":" port)
