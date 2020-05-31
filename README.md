@@ -323,6 +323,29 @@ low-level functions:
 ¹ _B-trees are faster than most Schemes' SRFI 146, but Gauche's `<tree-map>` is
 usually even faster_
 
+### File Paths
+
+`(schemepunk path)`
+
+Functions for manipulating file path strings. These use the path format of the
+current OS; there are separate implementations for Windows and Unix-like OSes.
+
+- `(current-directory)` returns the current working directory.
+- `(path-join <path> <suffix>…)` appends each `<suffix>` to the root path
+  `<path>` using the OS path separator.
+- `(path-normalize <path>)` converts `<path>` to an equivalent, normalized form
+  by removing any unnecessary `.` or `..` elements, correcting path separators,
+  and (on Windows) adding a missing drive name.
+- `(path-root? <path>)` returns whether `<path>` is an absolute root path (e.g.,
+  `/` on Unix or `C:\` on Windows).
+- `(path-directory <path>)` returns the path of the parent directory of
+  `<path>`.
+- `(path-strip-directory <path>)` returns the final path element of `<path>`.
+- `(path-absolute? <path>)` returns whether `<path>` is an absolute path.
+- `(path-relative? <path>)` returns whether `<path>` is a relative path.
+- `(relative-path->absolute-path <path>)` converts a relative path to an
+  absolute path, assuming that the path is relative to `(current-directory)`.
+
 ### Datalog (WIP)
 
 `(schemepunk datalog)`
