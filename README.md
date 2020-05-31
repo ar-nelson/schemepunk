@@ -106,7 +106,8 @@ Gerbil.
 `(schemepunk syntax)`
 
 - `λ` is shorthand for `lambda`. Parentheses may be omitted for a single
-  argument name: `(λ x (+ x 1))` = `(lambda (x) (+ x 1))`.
+  argument name: `(λ x (+ x 1))` = `(lambda (x) (+ x 1))`. Arguments may contain
+  destructuring assigments (see `match`).
 
 - `->`, `->>`, and `as->` are threading macros that behave identically to [their
   equivalents from Clojure][clojure-threading].
@@ -134,9 +135,9 @@ Gerbil.
     Related functions `match-let*`, `match-let1`, and `match-letrec` are also
     available.
 
-- `(match-lambda <pattern> <expressions>…)` defines a lambda of one argument
-  that matches its argument against a pattern. `matchλ` is an alias.
-  `match-lamda*` matches its entire argument list against the pattern.
+- `(match-lambda (<pattern> <expr>…)…)` defines a lambda of one argument
+  that matches its argument against one or more patterns. `matchλ` is an alias.
+  `match-lamda*` matches its entire argument list against the patterns.
 
 - `(match-guard ((<pattern> <handler>…)…) <expressions>…)` is a `guard`
   form with pattern-matching. It matches the raised error against each
