@@ -11,9 +11,12 @@
           match match?
           match-lambda match-lambda* matchλ
           match-let match-let* match-letrec match-let1
-          match-guard)
+          match-guard
+
+          define+)
 
   (import (scheme base)
+          (scheme case-lambda)
           (scheme write))
 
   (cond-expand
@@ -495,4 +498,104 @@
         ((_ ((pattern . clause) ...) . body)
           (guard (err ((match? err pattern)
                         (match-body err () pattern (begin . clause))) ...)
-            . body))))))
+            . body)))))
+
+  (cond-expand
+    (chicken
+      ; This should work in Kawa too, but, mysteriously, it doesn't.
+      (include "polyfills/define-optionals.scm"))
+    (gerbil
+      (import (only (gerbil core) def))
+      (begin
+        (define-syntax %define-optionals
+          (syntax-rules (:rest)
+            ((_ name () params _ body)
+              (def (name . params) body))
+            ((_ name (:rest (rest-pattern ...)) (params ...) _ body)
+              (def (name params ... . rest)
+                (assume (match? rest (rest-pattern ...)))
+                (match-body rest () (rest-pattern ...) body)))
+            ((_ name (:rest rest-param) (params ...) _ body)
+              (def (name params ... . rest-param) body))
+            ((_ name ((param default) . rest) (params ...) _ body)
+              (%define-optionals name
+                                 rest
+                                 (params ... (param default))
+                                 ()
+                                 body))
+            ((_ name (param . rest) (params ...) _ body)
+              (%define-optionals name
+                                 rest
+                                 (params ... (param #f))
+                                 ()
+                                 body))))))
+
+    ; This Gauche macro *should* work. It doesn't, and I have no idea why.
+    #;(gauche
+      (begin
+        (define-syntax %define-optionals
+          (syntax-rules (:rest)
+            ((_ name (optionals ... :rest (rest-pattern ...)) (params ...) _ body)
+              (define (name params ... :optional optionals ... :rest rest)
+                (assume (match? rest (rest-pattern ...)))
+                (match-body rest () (rest-pattern ...) body)))
+            ((_ name (optionals ... :rest rest-param) (params ...) _ body)
+              (define (name params ... :optional optionals ... :rest rest-param)
+                body))
+            ((_ name (optionals ...) (params ...) _ body)
+              (define (name params ... :optional optionals ...)
+                body))))))
+
+    (else
+      (begin
+        (define-syntax %define-optionals
+          (syntax-rules (:rest)
+            ((_ name () params (overloads ...) body)
+              (define name (case-lambda overloads ... (params body))))
+            ((_ name (:rest (rest-pattern ...)) (params ...) (overloads ...) body)
+              (define name
+                (case-lambda
+                  overloads ...
+                  ((params ... . rest)
+                    (assume (match? rest (rest-pattern ...)))
+                    (match-body rest () (rest-pattern ...) body)))))
+            ((_ name (:rest rest-param) (params ...) (overloads ...) body)
+              (define name (case-lambda overloads ... ((params ... . rest-param) body))))
+            ((_ name ((param default) . rest) (params ...) (overloads ...) body)
+              (%define-optionals name
+                                 rest
+                                 (params ... param)
+                                 (overloads ... ((params ...) (name params ... default)))
+                                 body))
+            ((_ name (param . rest) (params ...) (overloads ...) body)
+              (%define-optionals name
+                                 rest
+                                 (params ... param)
+                                 (overloads ... ((params ...) (name params ... #f)))
+                                 body)))))))
+
+  (begin
+    (define-syntax %define-params
+      (syntax-rules (:optional :rest)
+        ((_ name () params body)
+          (define (name . params) body))
+        ((_ name (:rest (rest-pattern ...)) (params ...) body)
+          (define (name params ... . rest)
+            (assume (match? rest (rest-pattern ...)))
+            (match-body rest () (rest-pattern ...) body)))
+        ((_ name (:rest rest-param) (params ...) body)
+          (define (name params ... . rest-param) body))
+        ((_ name (:optional . rest) params body)
+          (%define-optionals name rest params () body))
+        ((_ name ((pattern ...) . rest) (params ...) body)
+          (%define-params name rest (params ... arg)
+            (begin
+              (assume (match? arg (pattern ...)))
+              (match-body arg () (pattern ...) body))))
+        ((_ name (param . rest) (params ...) body)
+          (%define-params name rest (params ... param) body))))
+
+    (define-syntax define+
+      (syntax-rules ()
+        ((_ (name . params) . body)
+          (%define-params name params () (begin . body)))))))

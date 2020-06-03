@@ -216,24 +216,20 @@
     (define (retract-datalog-fact predicate params)
       (error "Retraction is not yet implemented"))
 
-    (define query-datalog
-      (case-lambda
-        ((predicate params var-names)
-          (unless (db-rules-stable?) (update-rules!))
-          (unless (db-facts-stable?) (update-facts!))
-          (->> (with-arity predicate params)
-               (multimap-ref (db-derived-facts))
-               set->list
-               (map (cute match-vars params <> (mapping var-comparator)))
-               (filter (λ x x))
-               (map mapping->alist)
-               (map (cute map
-                          (if var-names
-                            (λ((k . v)) (cons (cdr (assq k var-names)) v))
-                            (λ x x))
-                          <>))))
-        ((predicate params)
-          (query-datalog predicate params #f))))
+    (define+ (query-datalog predicate params :optional var-names)
+      (unless (db-rules-stable?) (update-rules!))
+      (unless (db-facts-stable?) (update-facts!))
+      (->> (with-arity predicate params)
+           (multimap-ref (db-derived-facts))
+           set->list
+           (map (cute match-vars params <> (mapping var-comparator)))
+           (filter (λ x x))
+           (map mapping->alist)
+           (map (cute map
+                      (if var-names
+                        (λ((k . v)) (cons (cdr (assq k var-names)) v))
+                        (λ x x))
+                      <>))))
 
     (define (update-rules!)
       (define rules

@@ -169,7 +169,5 @@
         ((string? x) (write-string x))
         (else (error "wrong type for write-indented" x))))
 
-    (define write-indented
-      (case-lambda
-        ((x) (%write-indented% x 0 0))
-        ((x indent) (%write-indented% x indent 0))))))
+    (define+ (write-indented x :optional (indent 0))
+      (%write-indented% x indent 0))))

@@ -143,6 +143,13 @@ Gerbil.
   form with pattern-matching. It matches the raised error against each
   `pattern`.
 
+- `(define+ (<name> <params>… :optional <optional-params>… :rest <rest-param>) <body>…)`
+  is a form of `define` that supports destructuring assignment (as in `λ`) and
+  optional parameters. It uses Gauche's syntax for optional and rest parameters.
+  The `:optional` and `:rest` sections are optional.  Each `<optional-param>`
+  may be a symbol or a list `(<name> <default>)`. The `<params>` and
+  `<rest-param>` sections may be `match` patterns.
+
 ### JSON
 
 `(schemepunk json)`

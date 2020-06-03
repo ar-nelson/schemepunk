@@ -69,6 +69,33 @@
     (assume #t)
     (assume #t "a message"))
 
+  (test "define+"
+    (let ()
+      (define+ (foo) 1)
+      (define+ (bar x) (+ x 1))
+      (define+ (baz x y z) (list x y z))
+      (define+ (qux a b :rest c) (list a b c))
+      (assert-equal (foo) 1)
+      (assert-equal (bar 2) 3)
+      (assert-equal (baz 1 2 3) '(1 2 3))
+      (assert-equal (qux 1 2 3 4) '(1 2 (3 4)))))
+
+  (test "define+ with optionals"
+    (let ()
+      (define+ (foo x :optional (y 3)) (+ x y))
+      (define+ (bar :optional (x 1) (y 2)) (+ x y))
+      (define+ (baz x :optional y z) (list x y z))
+      (define+ (qux x :optional (y 'y) :rest z) (list x y z))
+      (assert-equal (foo 1) 4)
+      (assert-equal (foo 1 2) 3)
+      (assert-equal (bar) 3)
+      (assert-equal (bar 4) 6)
+      (assert-equal (bar 4 5) 9)
+      (assert-equal (baz 1) '(1 #f #f))
+      (assert-equal (baz 1 2 3) '(1 2 3))
+      (assert-equal (qux 'x) '(x y ()))
+      (assert-equal (qux 1 2 3 4) '(1 2 (3 4)))))
+
   (test-group "Pattern Matching"
     (test "match quoted symbols"
       (assert-eqv
@@ -140,6 +167,11 @@
     (test "match …"
       (assert-equal
         '((1 3 5) (2 4 6))
+        (match '((1 2) (3 4) (5 6))
+          (((x y) …) (list x y))
+          (else #f)))
+      (assert-equal
+        '((1 3 5) (2 4 6))
         (match '(a (1 x 2) (3 x 4) (5 x 6))
           ((a (o 'y e) …) (list e o))
           ((a (o 'x e) …) (list o e))
@@ -161,4 +193,19 @@
         "not caught"
         (guard (e ((eqv? e 'a) "not caught"))
           (match-guard (('b "caught"))
-            (raise 'a)))))))
+            (raise 'a)))))
+    (test "define+ argument destructuring"
+      (let ()
+        (define+ (foo (x y)) (+ x y))
+        (define+ (bar (a b) (c d e)) (list a b c d e))
+        (assert-equal (foo '(1 2)) 3)
+        (assert-equal (bar '(z y) '(x w v)) '(z y x w v))))
+    (test "define+ argument destructuring :rest"
+      (let ()
+        (define+ (baz :rest ((x y) …)) (list x y))
+        (define+ (qux :optional (x 'x) :rest ((y z) …)) (list x y z))
+        (assert-equal (baz) '(() ()))
+        (assert-equal (baz '(1 2) '(3 4) '(5 6)) '((1 3 5) (2 4 6)))
+        (assert-equal (qux) '(x () ()))
+        (assert-equal (qux 1 '(2 3) '(4 5) '(6 7))
+                      '(1 (2 4 6) (3 5 7)))))))
