@@ -328,7 +328,7 @@
           (write-string "\"!! NOT JSON: " port)
           (let1 str (open-output-string)
             (write json str)
-            (-> str get-output-string escape-json-string (write-string port)))
+            (chain str (get-output-string) (escape-json-string) (write-string <> port)))
           (write-char #\" port))))
 
     (define (write-json json . args)

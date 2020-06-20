@@ -49,14 +49,14 @@
           (define queue (SynchronousQueue))
           (define done #f)
           (define thread
-            (-> (λ ()
-                  (try-catch (begin (proc (cut queue:put <>))
-                                    (let loop ()
-                                      (queue:put (eof-object))
-                                      (loop)))
-                    (ex InterruptedException #f)))
-                runnable
-                Thread))
+            (chain (λ ()
+                     (try-catch (begin (proc (cut queue:put <>))
+                                       (let loop ()
+                                         (queue:put (eof-object))
+                                         (loop)))
+                       (ex InterruptedException #f)))
+                   (runnable)
+                   (Thread)))
           (thread:setDaemon #t)
           (thread:start)
           (CoroutineGenerator

@@ -60,7 +60,7 @@
         ; even though the SRFI explicitly says this is not an error.
         (define (mapping=? value-comparator x . xs)
           (define key-comparator (mapping-key-comparator x))
-          (and (every (λ-> mapping-key-comparator (eq? key-comparator)) xs)
+          (and (every (λ=> (mapping-key-comparator) (eq? key-comparator)) xs)
                (apply %mapping=? `(,value-comparator ,x ,@xs))))
 
         ; Gauche 0.9.6's tree map implementation has a typo in its comparator,
@@ -73,11 +73,11 @@
         (define (mapping-hash value-comparator m)
           (define key-comparator (mapping-key-comparator m))
           (mapping-fold (λ(k v h)
-                          (-> (modulo (* h 33) (hash-bound))
-                              (+ (comparator-hash key-comparator k))
-                              (* 33)
-                              (modulo (hash-bound))
-                              (+ (comparator-hash value-comparator v))))
+                          (chain (modulo (* h 33) (hash-bound))
+                                 (+ (comparator-hash key-comparator k))
+                                 (* 33)
+                                 (modulo <> (hash-bound))
+                                 (+ (comparator-hash value-comparator v))))
                         (hash-salt)
                         m))
 
@@ -237,20 +237,20 @@
               (assume (procedure? updater))
               (mapping-ref mapping key
                 (λ () (error "mapping-update: key not in mapping" key))
-                (λ->> updater (btree-set mapping key))))
+                (λ=> (updater) (btree-set mapping key))))
             ((mapping key updater failure)
               (assume (procedure? updater))
               (assume (procedure? failure))
               (mapping-ref mapping key
                 (λ () (btree-set mapping key (updater (failure))))
-                (λ->> updater (btree-set mapping key))))
+                (λ=> (updater) (btree-set mapping key))))
             ((mapping key updater failure success)
               (assume (procedure? updater))
               (assume (procedure? failure))
               (assume (procedure? success))
               (mapping-ref mapping key
                 (λ () (btree-set mapping key (updater (failure))))
-                (λ->> success updater (btree-set mapping key))))))
+                (λ=> (success) (updater) (btree-set mapping key))))))
 
         (define mapping-update!
           (case-lambda
@@ -258,20 +258,20 @@
               (assume (procedure? updater))
               (mapping-ref mapping key
                 (λ () (error "mapping-update!: key not in mapping" key))
-                (λ->> updater (btree-set! mapping key))))
+                (λ=> (updater) (btree-set! mapping key))))
             ((mapping key updater failure)
               (assume (procedure? updater))
               (assume (procedure? failure))
               (mapping-ref mapping key
                 (λ () (btree-set! mapping key (updater (failure))))
-                (λ->> updater (btree-set! mapping key))))
+                (λ=> (updater) (btree-set! mapping key))))
             ((mapping key updater failure success)
               (assume (procedure? updater))
               (assume (procedure? failure))
               (assume (procedure? success))
               (mapping-ref mapping key
                 (λ () (btree-set! mapping key (updater (failure))))
-                (λ->> success updater (btree-set! mapping key))))))
+                (λ=> (success) (updater) (btree-set! mapping key))))))
 
         (define (mapping-update/default mapping key updater default)
           (mapping-update mapping key updater (λ () default)))
@@ -308,11 +308,11 @@
           (define (ignore obj)
             (values mapping obj))
           (define (update new-key new-value obj)
-            (-> (if (=? (mapping-key-comparator mapping) key new-key)
-                  mapping
-                  (btree-delete mapping key))
-                (btree-set new-key new-value)
-                (values obj)))
+            (chain (if (=? (mapping-key-comparator mapping) key new-key)
+                     mapping
+                     (btree-delete mapping key))
+                   (btree-set <> new-key new-value)
+                   (values <> obj)))
           (define (remove obj)
             (values (btree-delete mapping key) obj))
           (assume (procedure? failure))
@@ -327,11 +327,11 @@
           (define (ignore obj)
             (values mapping obj))
           (define (update new-key new-value obj)
-            (-> (if (=? (mapping-key-comparator mapping) key new-key)
-                  mapping
-                  (btree-delete! mapping key))
-                (btree-set! new-key new-value)
-                (values obj)))
+            (chain (if (=? (mapping-key-comparator mapping) key new-key)
+                     mapping
+                     (btree-delete! mapping key))
+                   (btree-set! <> new-key new-value)
+                   (values <> obj)))
           (define (remove obj)
             (values (btree-delete! mapping key) obj))
           (assume (procedure? failure))

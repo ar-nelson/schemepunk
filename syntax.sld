@@ -1,6 +1,6 @@
 (define-library (schemepunk syntax)
-  (export -> ->> as->
-          λ λ-> λ->>
+  (export λ λ=>
+          chain chain-and chain-when chain-lambda
           let1 let1-values
           inline-defines syntax-symbol-case
           one-of none-of compl dotimes
@@ -48,7 +48,7 @@
 
   (cond-expand
     ((or chicken (library (srfi 26)))
-      (import (srfi 26)))
+      (import (only (srfi 26) cut cute)))
     (else
       (begin
         (define-syntax %cut%
@@ -154,6 +154,12 @@
               (unless ok?
                 (error "invalid assumption" (list 'ok? . msgs)))))))))
 
+  (cond-expand
+    ((and (not chicken) (library (srfi 197)))
+      (import (srfi 197)))
+    (else
+      (include "polyfills/srfi-197-impl.scm")))
+
   ; Gerbil Scheme is a special case for several macro definitions.
   ; It doesn't allow _ as a macro keyword[1], and it has inconsistent support
   ; for the let-syntax trick for distinguishing symbols in macros.
@@ -224,37 +230,8 @@
                                    __)))))))
 
   (begin
-    (define-syntax ->
-      (syntax-rules ()
-        ((-> x) x)
-        ((-> x (fn . args) . rest)
-          (-> (fn x . args) . rest))
-        ((-> x fn . rest)
-          (-> (fn x) . rest))))
-
-    (define-syntax ->>
-      (syntax-rules ()
-        ((->> x) x)
-        ((->> x (fn args ...) . rest)
-          (->> (fn args ... x) . rest))
-        ((->> x fn . rest)
-          (->> (fn x) . rest))))
-
-    (define-syntax as->
-      (syntax-rules ()
-        ((as-> x name) x)
-        ((as-> x name expr . rest)
-          (as-> (let ((name x)) expr) name . rest))))
-
-    (define-syntax λ->
-      (syntax-rules ()
-        ((λ-> . rest)
-          (lambda (x) (-> x . rest)))))
-
-    (define-syntax λ->>
-      (syntax-rules ()
-        ((λ->> . rest)
-          (lambda (x) (->> x . rest)))))
+    (define-syntax λ=>
+      (syntax-rules () ((_ . xs) (chain-lambda . xs))))
 
     (define-syntax let1
       (syntax-rules ()
@@ -396,9 +373,9 @@
         ((_ _ _ (? _) body) body)
         ((_ subject over (? _ name) body) (match-body-let subject over name body))
         ((_ subject over (and pat ...) body)
-          (->> body (match-body subject over pat) ...))
+          (chain body (match-body subject over pat) ...))
         ((_ subject over (or pat ...) body)
-          (->> body (match-body subject over pat) ...))
+          (chain body (match-body subject over pat) ...))
         ((_ _ _ (not _) body) body)
         ((_ subject over (pat ___) body)
           (match-body ellipsis ((ellipsis subject) . over) pat body))

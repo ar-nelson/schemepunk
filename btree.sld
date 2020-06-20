@@ -83,13 +83,13 @@
 
     (define (node-deep-copy node)
       (node-let node elements children size
-        (let1 new-children (and children (-> children vector-length make-vector))
+        (let1 new-children (and children (chain children (vector-length) (make-vector)))
           (when new-children
             (let loop ((i 0))
               (unless (> i size)
-                (->> (vector-ref i children)
-                     node-deep-copy
-                     (vector-set! new-children i))
+                (chain (vector-ref i children)
+                       (node-deep-copy)
+                       (vector-set! new-children i))
                 (loop (+ i 1)))))
           (make-node (vector-copy elements) new-children size))))
 
@@ -254,8 +254,8 @@
               (values #f node)))
           ((and pair (=? (car pair) key))
             (values pair
-              (let1-values (separator right) (-> (vector-ref children (+ i 1))
-                                                 (node-pop-smallest min-size))
+              (let1-values (separator right) (chain (vector-ref children (+ i 1))
+                                                    (node-pop-smallest <> min-size))
                 (node-balance node (+ i 1) separator right min-size))))
           (else
             (let1-values (deleted new-child)
@@ -317,8 +317,8 @@
       (node-let node elements children size
         (cond
           (children
-            (let1-values (popped new-left) (-> (vector-ref children 0)
-                                               (node-pop-smallest min-size))
+            (let1-values (popped new-left) (chain (vector-ref children 0)
+                                                  (node-pop-smallest <> min-size))
               (values popped (node-balance node 0 #f new-left min-size))))
           ((zero? size)
             (values #f node))
@@ -489,7 +489,7 @@
     (define (btree-fold-right kons knil btree)
       (node-fold-right kons knil (btree-root btree)))
 
-    (define btree-empty? (λ-> btree-root node-size zero?))
+    (define btree-empty? (λ=> (btree-root) (node-size) (zero?)))
 
     (define (btree->alist btree)
       (btree-fold-right cons '() btree))
@@ -535,11 +535,11 @@
     (define (btree-hash value-comparator btree)
       (define key-comparator (btree-key-comparator btree))
       (btree-fold (λ((k . v) h)
-                    (-> (modulo (* h 33) (hash-bound))
-                        (+ (comparator-hash key-comparator k))
-                        (* 33)
-                        (modulo (hash-bound))
-                        (+ (comparator-hash value-comparator v))))
+                    (chain (modulo (* h 33) (hash-bound))
+                           (+ (comparator-hash key-comparator k))
+                           (* 33)
+                           (modulo <> (hash-bound))
+                           (+ (comparator-hash value-comparator v))))
                   (hash-salt)
                   btree))
 

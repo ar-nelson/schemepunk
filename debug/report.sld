@@ -86,9 +86,9 @@
             ((and (eqv? c #\}) (> i (+ word-start 1)))
                (case state
                  ((var buffer-var)
-                    (let1 param (->> (substring template (+ word-start 1) i)
-                                     string->number
-                                     (list-ref params))
+                    (let1 param (chain (substring template (+ word-start 1) i)
+                                       (string->number)
+                                       (list-ref params))
                       (if (string? param)
                         (begin (set! word-buffer
                                  (case state

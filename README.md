@@ -47,6 +47,7 @@ Unix-based OSes.)
 | [146][srfi146] | `(schemepunk mapping)`    | Mappings (w/o `(srfi 146 hash)`) |
 | [158][srfi158] | `(schemepunk generator)`  | Generators and Accumulators  |
 | [173][srfi173] | `(schemepunk hook)`       | Hooks                        |
+| [197][srfi197] | `(schemepunk syntax)`     | `chain` and related macros   |
 
 These modules are aliases for several common SRFIs and R7RS Large libraries,
 along with implementations of these libraries for Schemes that don't provide
@@ -109,15 +110,22 @@ Gerbil.
   argument name: `(λ x (+ x 1))` = `(lambda (x) (+ x 1))`. Arguments may contain
   destructuring assigments (see `match`).
 
-- `->`, `->>`, and `as->` are threading macros that behave identically to [their
-  equivalents from Clojure][clojure-threading].
+- `chain` is the [Clojure threading macro][clojure-threading] `->>`, with some
+  additional features. This macro is fully defined in [SRFI 197][srfi197], but
+  here is a quick description:
+
+  - `(chain x (foo y) (bar z))` = `(bar z (foo y x))`.
+  - Argument location can be moved with `<>`: `(chain x (foo <> y))` =
+    `(foo x y)`.
+  - Unlike Clojure, all calls in the pipeline must be lists. `(chain x foo)` is
+    illegal, and must be written `(chain x (foo))`.
+
+- `chain-lambda` defines a lambda using a `chain` pipeline. `(chain-lambda (foo
+  y) (bar z))` = `(lambda (x) (chain x (foo y) (bar z)))`. `λ=>` is shorthand
+  for `chain-lambda`.
 
 - `(let1 <name> <value> <expressions>…)` is shorthand for `let` with a single
   variable.
-
-- `λ->` and `λ->>` are a combination of `lambda` and the `->` and `->>`
-  threading macros. They take one unnamed argument. `(λ-> foo bar baz)` is
-  equivalent to `(lambda (x) (-> x foo bar baz))`.
 
 - `(match <value> (<pattern> <expr>…)…)` is a hygenic pattern-matching macro,
   based on Alex Shinn's `match-simple.scm`, which is itself based on Andrew
@@ -401,6 +409,7 @@ Schemepunk also includes MIT/BSD-licensed code from the following authors:
 [srfi146]: https://srfi.schemers.org/srfi-146/
 [srfi158]: https://srfi.schemers.org/srfi-158/
 [srfi173]: https://srfi.schemers.org/srfi-173/
+[srfi197]: https://srfi.schemers.org/srfi-197/
 [clojure-threading]: https://clojure.org/guides/threading_macros
 [chibi-match]: http://synthcode.com/scheme/chibi/lib/chibi/match.html
 [sgr]: https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_parameters

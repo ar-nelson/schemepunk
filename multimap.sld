@@ -74,17 +74,17 @@
       (assume (multimap? mmap))
       (assume (set? vals))
       (assume (eq? (multimap-value-comparator mmap) (set-element-comparator vals)))
-      (-> (multimap->mapping mmap)
-          (mapping-update key (λ x x) (λ() (set-copy vals)) (cut set-union <> vals))
-          (make-multimap (multimap-value-comparator mmap))))
+      (chain (multimap->mapping mmap)
+             (mapping-update <> key (λ x x) (λ() (set-copy vals)) (cut set-union <> vals))
+             (make-multimap <> (multimap-value-comparator mmap))))
 
     (define (multimap-adjoin-set! mmap key vals)
       (assume (multimap? mmap))
       (assume (set? vals))
       (assume (eq? (multimap-value-comparator mmap) (set-element-comparator vals)))
       (set-multimap-mapping! mmap
-        (-> (multimap->mapping mmap)
-            (mapping-update! key (λ x x) (λ() (set-copy vals)) (cut set-union! <> vals))))
+        (chain (multimap->mapping mmap)
+               (mapping-update! <> key (λ x x) (λ() (set-copy vals)) (cut set-union! <> vals))))
       mmap)
 
     (define (multimap-delete-key mmap key)
@@ -104,17 +104,18 @@
       (let1 m (multimap->mapping mmap)
         (mapping-ref m key
           (λ() mmap)
-          (λ vs (make-multimap
-                  (mapping-set m key (set-delete vs value))
-                  (multimap-value-comparator mmap))))))
+          (λ=> (set-delete <> value)
+               (mapping-set m key)
+               (make-multimap <> (multimap-value-comparator mmap))))))
 
     (define (multimap-delete-value! mmap key value)
       (assume (multimap? mmap))
       (let1 m (multimap->mapping mmap)
         (mapping-ref m key
           (λ() mmap)
-          (λ vs (set-multimap-mapping! mmap
-                  (mapping-set! m key (set-delete! vs value)))
+          (λ vs (chain (set-delete! vs value)
+                       (mapping-set! m key)
+                       (set-multimap-mapping! mmap))
                 mmap))))
 
     (define (multimap-union lhs rhs)
@@ -177,9 +178,9 @@
 
     (define (multimap-value-count mmap)
       (assume (multimap? mmap))
-      (->> (multimap-value-sets mmap)
-           (map set-size)
-           (fold + 0)))
+      (chain (multimap-value-sets mmap)
+             (map set-size)
+             (fold + 0)))
 
     (define (multimap-empty? mmap)
       (assume (multimap? mmap))

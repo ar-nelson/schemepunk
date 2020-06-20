@@ -3,15 +3,6 @@
         (schemepunk test))
 
 (test-group "Schemepunk Syntax"
-  (test "->"
-    (assert-eqv (-> "6" string->number (/ 2) (- 5)) -2))
-
-  (test "->>"
-    (assert-eqv (->> "6" string->number (/ 2) (- 5)) 14/3))
-
-  (test "as->"
-    (assert-eqv (as-> "6" x (string->number x) (/ x 2) (- 5 x)) 2))
-
   (test "λ"
     (assert-equal (map (λ x (+ x 2)) (map (λ (x) (+ x 3)) '(1 2 3))) '(6 7 8)))
 
@@ -20,16 +11,6 @@
                        '((10 20) (30 40))
                        '((50 60) (70 80)))
                   '((10 20 50 60) (30 40 70 80))))
-
-  (test "λ->"
-    (assert-equal
-      (map (λ-> number->string (string-append "x")) '(1 2 3))
-      '("1x" "2x" "3x")))
-
-  (test "λ->>"
-    (assert-equal
-      (map (λ->> number->string (string-append "x")) '(1 2 3))
-      '("x1" "x2" "x3")))
 
   (test "let1"
     (assert-eqv (let1 x 2 (define y 3) (+ x y)) 5))
@@ -95,6 +76,113 @@
       (assert-equal (baz 1 2 3) '(1 2 3))
       (assert-equal (qux 'x) '(x y ()))
       (assert-equal (qux 1 2 3 4) '(1 2 (3 4)))))
+
+  (test-group "Chaining"
+    (define (exclamation x) (string-append x "!"))
+    (define (foo+bar x) (values (string-append x "foo") (string-append x "bar")))
+
+    (test-equal "chain" "bazbarfoo!"
+      (chain ""
+             (string-append "foo")
+             (string-append "bar")
+             (string-append "baz")
+             (exclamation)))
+
+    (test-equal "chain <>" "barfoobaz"
+      (chain ""
+             (string-append <> "foo")
+             (string-append "bar" <>)
+             (string-append <> "baz")))
+
+    (test-equal "chain with <> in operator position" 3
+      (chain +
+             (<> 1 2)))
+
+    (test-equal "chain multiple <>" "quxfoo/quxbar"
+      (chain "qux"
+             (foo+bar)
+             (string-append <> "/" <>)))
+
+    (test-equal "chain <...>" "bazquxfooquxbar"
+      (chain "qux"
+             (foo+bar)
+             (string-append "baz" <...>)))
+
+    (cond-expand
+      (gerbil) ; Gerbil doesn't support . in let-values
+      (else
+        (test-equal "chain <> <...>" "quxfoobazquxbar"
+          (chain "qux"
+                 (foo+bar)
+                 (string-append <> "baz" <...>)))))
+
+    (test-equal "chain-and" "bazbarfoo!"
+      (chain-and ""
+                 (string-append "foo")
+                 (string-append "bar")
+                 (string-append "baz")
+                 (exclamation)))
+
+    (test-equal "chain-and <>" "barfoobaz"
+      (chain-and ""
+                 (string-append <> "foo")
+                 (string-append "bar" <>)
+                 (string-append <> "baz")))
+
+    (test-equal "chain-and short-circuit" #f
+      (chain-and ""
+                 (string-append "foo")
+                 (equal? "bar")
+                 (string-append "baz")
+                 (exclamation)))
+
+    (test-equal "chain-when" "bazfoo"
+      (chain-when ""
+                  ((= (+ 2 2) 4) (string-append "foo"))
+                  ((= (+ 2 2) 5) (string-append "bar"))
+                  (#t (string-append "baz"))))
+
+    (test-equal "chain-when <>" "barfooqux"
+      (chain-when ""
+                  (#t (string-append <> "foo"))
+                  (#t (string-append "bar" <>))
+                  (#f (string-append <> "baz"))
+                  (#t (string-append <> "qux"))))
+
+    (test-equal "chain-lambda" "bazbarfoo!"
+      ((chain-lambda (string-append "foo")
+                     (string-append "bar")
+                     (string-append "baz")
+                     (exclamation))
+       ""))
+
+    (test-equal "chain-lambda one step" "foobar"
+      ((chain-lambda (string-append "foo")) "bar"))
+
+    (test-equal "chain-lambda <>" "barfoobaz"
+      ((chain-lambda (string-append <> "foo")
+                     (string-append "bar" <>)
+                     (string-append <> "baz"))
+       ""))
+
+    (test-equal "chain-lambda multiple <>" "foobarbazqux"
+      ((chain-lambda (string-append <> "bar" <>)
+                     (string-append <> "qux"))
+       "foo"
+       "baz"))
+
+    (test-equal "chain-lambda <...>" "foobarbazqux"
+      ((chain-lambda (string-append "foo" <...>)
+                     (string-append <> "qux"))
+       "bar"
+       "baz"))
+
+    (test-equal "chain-lambda <> <...>" "foobarbazquxquux"
+      ((chain-lambda (string-append <> "bar" <...>)
+                     (string-append <> "quux"))
+       "foo"
+       "baz"
+       "qux")))
 
   (test-group "Pattern Matching"
     (test "match quoted symbols"
