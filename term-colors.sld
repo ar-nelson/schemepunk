@@ -22,7 +22,7 @@
     bold-black bold-red bold-yellow bold-green
     bold-blue bold-cyan bold-magenta bold-white
 
-    write-colored write-color reset-color
+    write-colored write-in-color write-color reset-color
 
     term-colors-enabled?)
 
@@ -98,10 +98,12 @@
     (define (reset-color)
       (write-color reset))
 
-    (define (write-colored color text)
+    (define (write-in-color color text)
       (write-color color)
       (write-string text)
       (reset-color))
+
+    (define write-colored write-in-color)
 
     (define reset   (make-color))
     (define black   (make-color fg-black))

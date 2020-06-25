@@ -51,6 +51,7 @@
           ; extra functions
           snoc
           map-with-index
+          intercalate
           list-gen
           string-join
           fold-in-pairs fold-right-in-pairs
@@ -71,6 +72,11 @@
 
     (define (map-with-index f xs)
       (map f xs (list-tabulate (length xs) (λ(x) x))))
+
+    (define (intercalate delim xs)
+      (match xs
+        ((x y . zs) `(,x ,delim ,@(intercalate delim (cons y zs))))
+        (else xs)))
 
     (define (list-gen fn)
       (define (list-gen-loop accum)

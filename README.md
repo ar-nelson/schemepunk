@@ -238,7 +238,7 @@ A simple event-based parser is also available, for performance:
 
 ANSI escape codes for terminal colors.
 
-`(write-colored <color> <string>)` writes `string` to `(current-output-port)`,
+`(write-in-color <color> <string>)` writes `string` to `(current-output-port)`,
 with the ANSI escape codes to make it appear as `color`. The escape codes are
 not printed if Schemepunk detects that the current terminal does not support
 them; this can be overridden by setting the parameter `term-colors-enabled?` to
