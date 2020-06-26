@@ -9,6 +9,7 @@
         (schemepunk sort)
         (schemepunk hash-table)
         (schemepunk set)
+        (schemepunk stream)
         (schemepunk generator)
         (schemepunk hook)
         (schemepunk btree)
