@@ -1,4 +1,4 @@
-.PHONY: test-chibi test-chicken test-gauche test-gerbil test-kawa test-larceny test-sagittarius test test-all clean watch
+.PHONY: test-chibi test-chicken test-gauche test-gerbil test-kawa test-larceny test-sagittarius test test-all repl clean watch
 
 schemepunk:
 	mkdir schemepunk
@@ -33,6 +33,9 @@ test-sagittarius: schemepunk
 test: test-gauche
 
 test-all: test-chibi test-gauche test-gerbil test-kawa test-larceny test-chicken test-sagittarius
+
+repl: schemepunk
+	rlwrap gosh -r7 -I . -l scripts/repl.scm
 
 clean:
 	rm -rf schemepunk
