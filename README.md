@@ -159,6 +159,29 @@ Gerbil.
   may be a symbol or a list `(<name> <default>)`. The `<params>` and
   `<rest-param>` sections may be `match` patterns.
 
+### Function Combinators
+
+`(schemepunk function)`
+
+Combinators commonly used in functional languages like Haskell or ML.
+
+- `(identity <x>)` returns `<x>`.
+
+- `(const <x>)` returns a procedure that takes one argument, ignores it, and
+  returns `<x>`.
+
+- `(flip <f>)` takes a procedure of two arguments `<f>`, and returns a new
+  procedure `(g x y)` that calls `(<f> y x)`.
+
+- `(compose <fs>…)` composes procedures right-to-left: `(compose f g)` returns
+  a procedure `(composed x)` that calls `(f (g x))`.
+
+- `(bind <fs>…)` composes procedures left-to-right: `(bind f g)` returns a
+  procedure `(composed x)` that calls `(g (f x))`.
+
+- `(complement <pred?>)` takes a predicate `<pred?>` and returns its complement
+  (a predicate that always returns the opposite boolean value).
+
 ### JSON
 
 `(schemepunk json)`

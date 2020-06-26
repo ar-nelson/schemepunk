@@ -3,7 +3,7 @@
           chain chain-and chain-when chain-lambda
           let1 let1-values
           inline-defines syntax-symbol-case
-          one-of none-of compl dotimes
+          one-of none-of dotimes
 
           with-input-from-string with-output-to-string
           and-let* receive cut cute format assume
@@ -17,7 +17,8 @@
 
   (import (scheme base)
           (scheme case-lambda)
-          (scheme write))
+          (scheme write)
+          (schemepunk function))
 
   (cond-expand
     ((or chicken (library (srfi 2)))
@@ -269,10 +270,7 @@
           (lambda (y) (or (eqv? x y) ((one-of . xs) y))))))
 
     (define-syntax none-of
-      (syntax-rules () ((none-of . xs) (compl (one-of . xs)))))
-
-    (define (compl pred?)
-      (lambda (x) (not (pred? x))))
+      (syntax-rules () ((none-of . xs) (complement (one-of . xs)))))
 
     (define-syntax dotimes
       (syntax-rules ()
