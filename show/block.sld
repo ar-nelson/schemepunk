@@ -28,28 +28,42 @@
         ((head body) (make-block head body '()))
         ((head body tail)
           (assume (list? head))
-          (assume (and (pair? body) (proper-list? body)))
+          (assume (list? body))
+          (assume (pair? body))
+          (assume (proper-list? body))
           (assume (list? tail))
           (%make-block head body tail))))
-
-    (define (block-length block)
-      (assume (block? block))
-      (+ (unindented-length (block-head block))
-         (unindented-length (block-body block))
-         (unindented-length (block-tail block))))
 
     (define (whitespace? x)
       (and (span? x)
            (case (span-type x) ((whitespace newline) #t) (else #f))))
 
-    (define (unindented-length blocks)
-      (assume (list? blocks))
-      (chain blocks
-             (map (matchλ ((? promise? x) (unindented-length (list (force x))))
-                          ((? block? x) (block-length x))
-                          ((? span? x) (span-length x))
-                          ((? string? x) (string-length x))))
-             (fold + 0)))
+    (define+ (unindented-length block-gen :optional (max 999))
+      (assume (procedure? block-gen))
+      (assume (positive? max))
+      (call/cc
+        (λ return
+          (generator-fold
+            (λ(x len)
+              (if (>= len max) (return max)
+                (+ len
+                  (match x
+                    ((? promise? x)
+                      (unindented-length (generator (force x)) (- max len)))
+                    ((? block? x)
+                      (block-length x (- max len)))
+                    ((? span? x)
+                      (span-length x))
+                    ((? string? x)
+                      (string-length x))))))
+            0
+            block-gen))))
+
+    (define+ (block-length block :optional (max 999))
+      (assume (block? block))
+      (assume (positive? max))
+      (chain (block->span-generator block)
+             (unindented-length <> max)))
 
     (define (block-with-prefix block prefix)
       (assume (block? block))
@@ -116,11 +130,15 @@
               ((? block?)
                 (let*
                   ((trimmed-head (trim-trailing-whitespace (block-head x)))
-                   (head-length (unindented-length trimmed-head))
+                   (head-length
+                     (unindented-length (list->generator trimmed-head) width))
                    (elements (remove whitespace? (block-body x)))
-                   (elem-lengths (map (λ=> (list) (unindented-length)) elements))
-                   (tail-length (+ (unindented-length (block-tail x))
-                                   extra-tail-length))
+                   (elem-lengths
+                     (map (λ=> (generator) (unindented-length <> width)) elements))
+                   (tail-length (chain (block-tail x)
+                                       (list->generator)
+                                       (unindented-length <> width)
+                                       (+ extra-tail-length)))
                    (break-anywhere?
                      (and (pair? elements)
                           (> (+ current-indent (block-length x)) width)))
@@ -146,8 +164,10 @@
                             (indent ,current-indent)
                             ,@rest)))
                       (break-anywhere?
-                        (let1 body-indent (+ current-indent
-                                             (unindented-length (block-head x)))
+                        (let1 body-indent (chain (block-head x)
+                                                 (list->generator)
+                                                 (unindented-length <> width)
+                                                 (+ current-indent))
                           `((extra-tail-length ,tail-length)
                             ,@(block-head x)
                             (indent ,body-indent)

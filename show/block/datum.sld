@@ -114,7 +114,14 @@
         (cons head-block
           (cond
             ((null? tail) '())
-            ((or (memq tail seen) (assq tail labels) (not (pair? tail)))
+            ((and (eqv? mode 'simple) (pair? tail) (memq tail seen))
+              (list (whitespace-span)
+                    (delay
+                      (parameterize ((datum-shared-context ctx))
+                        (make-block (pair->block-body tail))))))
+            ((or (not (pair? tail))
+                 (and (not (eqv? mode 'simple))
+                      (or (memq tail seen) (assq tail labels))))
               (list (whitespace-span)
                     (text-span "." (datum-color-list))
                     (whitespace-span)
@@ -122,8 +129,8 @@
             (else
               (parameterize ((datum-shared-context
                                (case mode
-                                 ((cycles) (cons (cons tail seen) (cdr ctx)))
-                                 (else ctx))))
+                                 ((shared) ctx)
+                                 (else (cons (cons tail seen) (cdr ctx))))))
                 (case mode ((shared) (set-car! ctx (cons tail (car ctx)))))
                 (cons (whitespace-span) (pair->block-body tail))))))))
 
@@ -230,7 +237,7 @@
       (define ctx (datum-shared-context))
       (match ctx
         ((seen next-label labels mode)
-          (if (memq datum seen)
+          (if (and (not (eqv? mode 'simple)) (memq datum seen))
             (let1 label (match (assq datum labels)
                           ((_ . label) label)
                           (else
@@ -241,10 +248,10 @@
             (case mode
               ((simple)
                 (delay
-                  (parameterize ((datum-shared-context ctx))
+                  (parameterize ((datum-shared-context `((,datum ,@seen) ,@(cdr ctx))))
                     (%datum->block datum))))
               ((cycles)
-                (parameterize ((datum-shared-context (cons (cons datum seen) (cdr ctx))))
+                (parameterize ((datum-shared-context `((,datum ,@seen) ,@(cdr ctx))))
                   (let ((label (chain-and (assq datum labels) (cdr)))
                         (block (%datum->block datum)))
                     (if label
