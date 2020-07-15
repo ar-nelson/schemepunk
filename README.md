@@ -22,9 +22,9 @@ Schemes that don't natively support this.
 - [Larceny][larceny]
 - [Sagittarius][sagittarius]
 
-\* Chicken requires these eggs: `r7rs`, `utf8`, `srfi-41`, `srfi-69`, `srfi-99`,
-`srfi-113`, `srfi-128`, `srfi-133`, and `ioctl`. (`ioctl` is only required on
-Unix-based OSes.)
+\* Chicken requires these eggs: `r7rs`, `utf8`, `box`, `srfi-41`, `srfi-69`,
+`srfi-99`, `srfi-113`, `srfi-128`, `srfi-133`, and `ioctl`. (`ioctl` is only
+required on Unix-based OSes.)
 
 ## Features
 
@@ -39,6 +39,7 @@ Unix-based OSes.)
 | [28][srfi28]   | `(schemepunk syntax)`     | `format`                     |
 | [41][srfi41]   | `(schemepunk stream)`     | Streams                      |
 | [64][srfi64]   | `(schemepunk test)`       | Unit tests                   |
+| [111][srfi111] | `(schemepunk box)`        | Boxes                        |
 | [113][srfi113] | `(schemepunk set)`        | Sets and bags                |
 | [125][srfi125] | `(schemepunk hash-table)` | Hash tables                  |
 | [128][srfi128] | `(schemepunk comparator)` | Comparators                  |
@@ -425,6 +426,7 @@ Schemepunk also includes MIT/BSD-licensed code from the following authors:
 [srfi28]: https://srfi.schemers.org/srfi-28/
 [srfi41]: https://srfi.schemers.org/srfi-41/
 [srfi64]: https://srfi.schemers.org/srfi-64/
+[srfi111]: https://srfi.schemers.org/srfi-111/
 [srfi113]: https://srfi.schemers.org/srfi-113/
 [srfi125]: https://srfi.schemers.org/srfi-125/
 [srfi128]: https://srfi.schemers.org/srfi-128/
