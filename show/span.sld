@@ -8,7 +8,7 @@
 
   (export span? span-type span-text span-color span-length
           text-span whitespace-span newline-span
-          span-with-color
+          span-map-text span-with-color
           char-generator->span-generator
           write-span)
 
@@ -38,43 +38,66 @@
         (() (make-span 'newline (with-output-to-string newline) #f))
         ((text) (make-span 'newline text #f))))
 
+    (define (span-map-text proc span)
+      (make-span (span-type span) (proc (span-text span)) (span-color span)))
+
     (define (span-with-color span color)
       (make-span (span-type span) (span-text span) color))
 
-    (define (char-generator->span-generator next-char)
+    (define+ (char-generator->span-generator next-char
+                                             :optional
+                                             (word-separator? char-whitespace?)
+                                             (read-ansi-escapes? #f))
       ; This could be written more efficiently with make-coroutine-generator.
       ; But, because make-coroutine-generator spawns a thread in Kawa,
       ; and this procedure may be called hundreds of times in a loop,
       ; it is instead written in straightforward single-threaded style.
-      (define spans
-        (let loop ((mode 'text) (span (open-output-string)) (spans '()))
-          (let* ((c (next-char))
-                 (next-mode (match c
-                              ((? eof-object?) #f)
-                              ((or #\return #\newline) 'newline)
-                              ((? char-whitespace?) 'whitespace)
-                              (else 'text))))
-            (if (eq? mode next-mode)
-              (begin (write-char c span)
-                     (loop mode span spans))
-              (let* ((text (get-output-string span))
-                     (next-spans (if (zero? (string-length text))
-                                   spans
-                                   (cons (make-span mode text #f) spans))))
-                (if next-mode
-                  (let1 next-span (open-output-string)
-                    (write-char c next-span)
-                    (loop next-mode next-span next-spans))
-                  (reverse next-spans)))))))
-      (lambda ()
-        (if (null? spans)
-          (eof-object)
-          (let1 span (car spans)
-            (set! spans (cdr spans))
-            span))))
+      (define mode 'text)
+      (define color #f)
+      (define span (open-output-string))
+      (λ ()
+        (let loop ((c (next-char)))
+          (cond
+            ((eof-object? c)
+              (let1 text (get-output-string span)
+                (set! span (open-output-string))
+                (if (zero? (string-length text))
+                  c
+                  (make-span mode text color))))
+            ((and read-ansi-escapes? (eqv? c #\escape))
+              (match (next-char)
+                (#\[
+                  (let ((old-color color)
+                        (text (get-output-string span)))
+                    (cond
+                      ((zero? (string-length text))
+                        (set! color (merge-colors color (read-color next-char)))
+                        (loop (next-char)))
+                      (else
+                        (set! span (open-output-string))
+                        (set! color (read-color next-char))
+                        (make-span mode text old-color)))))
+                (c2
+                  (write-char c span)
+                  (loop c2))))
+            (else
+              (let1 new-mode (match c ((or #\return #\newline) 'newline)
+                                      ((? word-separator?) 'whitespace)
+                                      (else 'text))
+                (if (eq? mode new-mode)
+                  (begin (write-char c span)
+                         (loop (next-char)))
+                  (let ((old-mode mode)
+                        (text (get-output-string span)))
+                    (set! mode new-mode)
+                    (set! span (open-output-string))
+                    (write-char c span)
+                    (if (zero? (string-length text))
+                      (loop (next-char))
+                      (make-span old-mode text color))))))))))
 
-    (define (write-span span)
+    (define+ (write-span span :optional (port (current-output-port)))
       (assume (span? span))
       (if (span-color span)
-        (write-in-color (span-color span) (span-text span))
-        (write-string (span-text span))))))
+        (write-in-color (span-color span) (span-text span) port)
+        (write-string (span-text span) port)))))

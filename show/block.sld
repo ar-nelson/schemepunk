@@ -38,9 +38,10 @@
       (and (span? x)
            (case (span-type x) ((whitespace newline) #t) (else #f))))
 
-    (define+ (unindented-length block-gen :optional (max 999))
+    (define+ (unindented-length block-gen :optional (max 999) (string-width string-length))
       (assume (procedure? block-gen))
       (assume (positive? max))
+      (assume (procedure? string-width))
       (call/cc
         (λ return
           (generator-fold
@@ -49,21 +50,22 @@
                 (+ len
                   (match x
                     ((? promise? x)
-                      (unindented-length (generator (force x)) (- max len)))
+                      (unindented-length (generator (force x)) (- max len) string-width))
                     ((? block? x)
-                      (block-length x (- max len)))
+                      (block-length x (- max len) string-width))
                     ((? span? x)
-                      (span-length x))
+                      (string-width (span-text x)))
                     ((? string? x)
-                      (string-length x))))))
+                      (string-width x))))))
             0
             block-gen))))
 
-    (define+ (block-length block :optional (max 999))
+    (define+ (block-length block :optional (max 999) (string-width string-length))
       (assume (block? block))
       (assume (positive? max))
+      (assume (procedure? string-width))
       (chain (block->span-generator block)
-             (unindented-length <> max)))
+             (unindented-length <> max string-width)))
 
     (define (block-with-prefix block prefix)
       (assume (block? block))
@@ -73,9 +75,7 @@
         (block-tail block)))
 
     (define (indent-span n)
-      (chain (λ() (newline) (dotimes n (write-char #\space)))
-             (with-output-to-string)
-             (newline-span)))
+      (whitespace-span (vector->string (make-vector n #\space))))
 
     (define (trim-trailing-whitespace blocks)
       (if (and (pair? blocks) (whitespace? (last blocks)))
@@ -107,7 +107,11 @@
       (assume (block? block))
       next)
 
-    (define+ (block->span-generator/indented block :optional (width 80) (indent 2))
+    (define+ (block->span-generator/indented block
+                                             :optional
+                                             (width 80)
+                                             (string-width string-length)
+                                             (indent 2))
       (define blocks (list block))
       (define current-indent 0)
       (define extra-tail-length 0)
@@ -131,13 +135,17 @@
                 (let*
                   ((trimmed-head (trim-trailing-whitespace (block-head x)))
                    (head-length
-                     (unindented-length (list->generator trimmed-head) width))
+                     (unindented-length (list->generator trimmed-head)
+                                        width
+                                        string-width))
                    (elements (remove whitespace? (block-body x)))
                    (elem-lengths
-                     (map (λ=> (generator) (unindented-length <> width)) elements))
+                     (map (λ=> (generator)
+                               (unindented-length <> width string-width))
+                          elements))
                    (tail-length (chain (block-tail x)
                                        (list->generator)
-                                       (unindented-length <> width)
+                                       (unindented-length <> width string-width)
                                        (+ extra-tail-length)))
                    (break-anywhere?
                      (and (pair? elements)
@@ -157,7 +165,9 @@
                             ,@trimmed-head
                             (indent ,body-indent)
                             ,@(append-map
-                                (cute list (indent-span body-indent) <>)
+                                (cute list (newline-span)
+                                           (indent-span body-indent)
+                                           <>)
                                 elements)
                             ,@(block-tail x)
                             (extra-tail-length ,extra-tail-length)
@@ -166,14 +176,16 @@
                       (break-anywhere?
                         (let1 body-indent (chain (block-head x)
                                                  (list->generator)
-                                                 (unindented-length <> width)
+                                                 (unindented-length <> width string-width)
                                                  (+ current-indent))
                           `((extra-tail-length ,tail-length)
                             ,@(block-head x)
                             (indent ,body-indent)
                             ,(car elements)
                             ,@(append-map
-                                (cute list (indent-span body-indent) <>)
+                                (cute list (newline-span)
+                                           (indent-span body-indent)
+                                           <>)
                                 (cdr elements))
                             ,@(block-tail x)
                             (extra-tail-length ,extra-tail-length)
@@ -192,5 +204,6 @@
                 (error "expected block, span, or string" x))))))
       (assume (block? block))
       (assume (positive? width))
+      (assume (procedure? string-width))
       (assume (positive? indent))
       next)))

@@ -16,7 +16,8 @@
           (schemepunk generator)
           (schemepunk term-colors)
           (schemepunk show span)
-          (schemepunk show block))
+          (schemepunk show block)
+          (schemepunk show numeric))
 
   (cond-expand
     ((or chicken (library (srfi 99)))

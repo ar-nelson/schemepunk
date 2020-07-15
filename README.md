@@ -48,6 +48,7 @@ required on Unix-based OSes.)
 | [145][srfi145] | `(schemepunk syntax)`     | Assumptions                  |
 | [146][srfi146] | `(schemepunk mapping)`    | Mappings (w/o `(srfi 146 hash)`) |
 | [158][srfi158] | `(schemepunk generator)`  | Generators and Accumulators  |
+| [166][srfi166] | `(schemepunk show)`       | Monadic Formatting           |
 | [173][srfi173] | `(schemepunk hook)`       | Hooks                        |
 | [197][srfi197] | `(schemepunk syntax)`     | `chain` and related macros   |
 
@@ -274,24 +275,20 @@ values range from 0-255. Background colors are also available via
 For more fine-grained control, `(write-color <color>)` writes a single ANSI
 escape code. Make sure to reset with `(reset-color)` after writing!
 
-### Pretty Printing
+### Formatting and Pretty Printing
 
-`(schemepunk debug)`
+`(schemepunk show)`
 
-Prints Scheme data and JSON in an indented, colorized format. Adapts to the
-terminal width.
+A full-featured, original implementation of [SRFI 166][srfi166] (monadic text
+formatting). Supports colorized pretty-printing, Unicode-aware alignment and
+truncation, columns, tables, and more.
+
+`(schemepunk show debug)`, in particular, is useful for print-statement
+debugging. It prints Scheme data and JSON in an indented, colorized format,
+adapted to the terminal width. `write-debug` and `write-json` write Scheme data
+or JSON to `(current-output-port)`.
 
 ![Screenshot of pretty-printed Scheme source code](.readme-images/pretty-print.png)
-
-The internals of this library are complex and likely to change, but the most
-relevant functions are `write-debug` and `write-json`, which write Scheme data
-or JSON to `(current-output-port)`. `write-debug` is extremely useful as an
-alternative to `display`/`write` for print-statement debugging, because it
-provides sensible indentation and syntax highlighting.
-
-There is also a `(schemepunk debug report)` sublibrary which prints error
-reports in a similar style to Rust. It is incomplete and I am currently
-reworking its API, so it is not documented here.
 
 ### Test Runner
 
@@ -410,8 +407,9 @@ around patents, attribution, and multiple contributors.
 
 Schemepunk also includes MIT/BSD-licensed code from the following authors:
 
-- SRFI 113, 125, 132, and 133 implementations are taken from Chibi Scheme,
-  copyright &copy; 2009-2018 Alex Shinn
+- SRFI 113, 125, 132, and 133 implementations, and parts of SRFI 166
+  implementation, are taken from Chibi Scheme, copyright &copy; 2009-2020 Alex
+  Shinn
 - SRFI 128 implementation copyright &copy; 2015 John Cowan
 - SRFI 146 tests and original reference implementation copyright &copy;
   2016-2017 Marc Nieper-Wißkirchen
@@ -441,6 +439,7 @@ Schemepunk also includes MIT/BSD-licensed code from the following authors:
 [srfi145]: https://srfi.schemers.org/srfi-145/
 [srfi146]: https://srfi.schemers.org/srfi-146/
 [srfi158]: https://srfi.schemers.org/srfi-158/
+[srfi166]: https://srfi.schemers.org/srfi-166/
 [srfi173]: https://srfi.schemers.org/srfi-173/
 [srfi197]: https://srfi.schemers.org/srfi-197/
 [clojure-threading]: https://clojure.org/guides/threading_macros

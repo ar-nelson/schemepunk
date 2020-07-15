@@ -6,6 +6,10 @@ schemepunk:
 	  mkdir -p "schemepunk/$$(dirname "$$module")" &&\
 	  ln "$$module" "schemepunk/$${module#./}";\
 	done
+	for module in $$(find ./show -name '*.scm'); do\
+	  mkdir -p "schemepunk/$$(dirname "$$module")" &&\
+	  ln "$$module" "schemepunk/$${module#./}";\
+	done
 	ln -s ../polyfills schemepunk/polyfills
 	ln -s ../scripts schemepunk/scripts
 
