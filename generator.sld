@@ -7,7 +7,7 @@
   (export gcons* gappend gcombine gfilter gremove
           gtake gdrop gtake-while gdrop-while
           gflatten ggroup gmerge gmap gstate-filter
-          gdelete gdelete-neighbor-dups gindex gselect)
+          gdelete gdelete-neighbor-dups gindex gselect gfork)
   (export generator->list generator->reverse-list
           generator->vector generator->vector!  generator->string
           generator-fold generator-map->list generator-for-each generator-find
@@ -17,11 +17,14 @@
           reverse-vector-accumulator vector-accumulator!
           string-accumulator bytevector-accumulator bytevector-accumulator!
           sum-accumulator product-accumulator)
+  (export iterator? iterator-peek iterator-next!
+          generator->iterator character-port->iterator iterator->generator)
+
+  (import (scheme base))
 
   (cond-expand
     (kawa
-      (import (scheme base)
-              (scheme case-lambda)
+      (import (scheme case-lambda)
               (schemepunk syntax)
               (only (schemepunk list) any)
               (only (kawa base) define-simple-class runnable try-catch this invoke-special)
@@ -68,7 +71,55 @@
     ((and gerbil (library (std srfi 158)))
       (import (std srfi 158)))
     (else
-      (import (scheme base)
-              (scheme case-lambda)
+      (import (scheme case-lambda)
               (only (schemepunk list) any))
-      (include "polyfills/srfi-158-impl.scm"))))
+      (include "polyfills/srfi-158-impl.scm")))
+
+  (begin
+    (define-record-type Iterator
+      (make-iterator peek next)
+      iterator?
+      (peek iterator-peek-proc)
+      (next iterator->generator))
+
+    (define (iterator-peek iter)
+      ((iterator-peek-proc iter)))
+
+    (define (iterator-next! iter)
+      ((iterator->generator iter)))
+
+    (define (generator->iterator gen)
+      (define next (gen))
+      (make-iterator
+        (lambda () next)
+        (lambda () (let ((value next)) (set! next (gen)) value))))
+
+    (define (character-port->iterator port)
+      (make-iterator
+        (lambda () (peek-char port))
+        (lambda () (read-char port))))
+
+    ;; Split one generator into two,
+    ;; allowing multiple operations on the same generator.
+    (define (gfork gen)
+      (define left '())
+      (define right '())
+      (values
+        (lambda ()
+          (if (pair? left)
+            (let ((next (car left)))
+              (set! left (cdr left))
+              next)
+            (let ((next (gen)))
+              (unless (eof-object? next)
+                (set! right `(,@right ,next)))
+              next)))
+        (lambda ()
+          (if (pair? right)
+            (let ((next (car right)))
+              (set! right (cdr right))
+              next)
+            (let ((next (gen)))
+              (unless (eof-object? next)
+                (set! left `(,@left ,next)))
+              next)))))))

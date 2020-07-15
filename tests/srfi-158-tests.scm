@@ -127,6 +127,11 @@
               (lambda (item state) (values (even? state) (+ 1 state)))
               0
               (generator 'a 'b 'c 'd 'e 'f 'g 'h 'i 'j))))
+
+    (test '((2 3 4) (3 4 5))
+          (let-values (((l r) (gfork (generator 1 2 3))))
+            (list (generator->list (gmap (lambda (x) (+ x 1)) l))
+                  (generator->list (gmap (lambda (x) (+ x 2)) r)))))
   ) ; end "generators/operators"
 
 

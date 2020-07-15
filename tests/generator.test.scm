@@ -9,6 +9,7 @@
 
 (import (scheme base)
         (scheme read)
+        (only (schemepunk syntax) with-input-from-string)
         (only (schemepunk list) unfold)
         (schemepunk generator)
         (schemepunk test))
