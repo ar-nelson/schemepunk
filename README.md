@@ -265,6 +265,12 @@ Colors can also be constructed with `make-color`, which takes any combination of
 Order does not matter, and any or all of these can be omitted. `(make-color)`
 with no arguments is the color reset escape code, also available as `reset`.
 
+If your terminal supports 256 colors or true color, `(schemepunk term-color)`
+can also generate those escape codes, using `(make-8-bit-color <r> <g> <b>)` and
+`(make-24-bit-color <r> <g> <b>)`. 8-bit RGB values range from 0-5; 24-bit RGB
+values range from 0-255. Background colors are also available via
+`make-8-bit-color/bg` and `make-24-bit-color/bg`.
+
 For more fine-grained control, `(write-color <color>)` writes a single ANSI
 escape code. Make sure to reset with `(reset-color)` after writing!
 
