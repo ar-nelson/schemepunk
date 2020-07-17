@@ -563,22 +563,19 @@
                             '(0 ())
                             ((each-in-list fmts) vars))))))
           (chain (if (> len width)
-                   (let* ((ellipsis (get-var vars ellipsis))
-                          (ellipsis-width (string-width ellipsis))
-                          (max (- width ellipsis-width)))
-                     (let loop ((len len) (spans spans))
-                       (let1 span-len (string-width (span-text (car spans)))
-                         (cond
-                           ((> (- len span-len) max)
-                             (loop (- len span-len) (cdr spans)))
-                           ((= (- len span-len) max)
-                             (cons (text-span ellipsis) (cdr spans)))
-                           (else
-                             `(,(text-span ellipsis)
-                               ,(span-map-text
-                                  (cut substring/width <> 0 (- span-len (- len max)))
-                                  (car spans))
-                               ,@(cdr spans)))))))
+                   (let loop ((len len) (spans spans))
+                     (let1 span-len (string-width (span-text (car spans)))
+                       (cond
+                         ((> (- len span-len) width)
+                           (loop (- len span-len) (cdr spans)))
+                         ((= (- len span-len) width)
+                           (cdr spans))
+                         (else
+                           (cons
+                             (span-map-text
+                               (cut substring/width <> 0 (- span-len (- len width)))
+                               (car spans))
+                             (cdr spans))))))
                    spans)
                  (reverse)
                  (list->generator)))))

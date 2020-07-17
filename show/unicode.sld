@@ -72,22 +72,22 @@
 
     (define+ (substring-terminal-width str
                                        :optional
-                                       (start 0)
-                                       (end +inf.0)
+                                       (from 0)
+                                       (to +inf.0)
                                        (tab-width 8)
                                        (ambiguous-is-wide? #f))
       (define amb? (if ambiguous-is-wide? char-ambiguous-width? (const #f)))
       (define reset-at-end? #f)
       (assume (string? str))
-      (assume (integer? start))
-      (assume (positive? end))
+      (assume (integer? from))
+      (assume (positive? to))
       (assume (integer? tab-width))
-      (assume (<= 0 start end))
+      (assume (<= 0 from to))
       (with-output-to-string (λ ()
         (let loop ((width 0) (i 0) (color #f))
           (cond
             ((>= i (string-length str)) #f)
-            ((and color (>= width start))
+            ((and color (>= width from))
               (write-color color)
               (loop width i #f))
             ((and (eqv? #\escape (string-ref str i)) (skip-escape str i))
@@ -95,7 +95,7 @@
                    (let1 escape (substring str i escape-end)
                      (set! reset-at-end? (not (equal? escape reset-escape)))
                      (cond
-                       ((>= width start)
+                       ((>= width from)
                          (write-string escape)
                          (loop width escape-end #f))
                        (else
@@ -112,8 +112,8 @@
                           (else 1)))
                      (w+ (+ width w)))
                 (cond
-                  ((> w+ end) #f)
-                  ((or (> width start) (and (not (zero? w)) (= width start)))
+                  ((> w+ to) #f)
+                  ((or (> width from) (and (not (zero? w)) (= width from)))
                     (write-char c)
                     (loop w+ (+ i 1) #f))
                   (else
@@ -122,10 +122,10 @@
 
     (define+ (substring-terminal-width/wide str
                                             :optional
-                                            (start 0)
-                                            (end +inf.0)
+                                            (from 0)
+                                            (to +inf.0)
                                             (tab-width 8))
-      (substring-terminal-width str start end tab-width #t))
+      (substring-terminal-width str from to tab-width #t))
 
     (define (terminal-aware . fmts)
       (fn (ambiguous-is-wide?)

@@ -161,7 +161,6 @@
     (test-equal str (show #f (trimmed/both 50 str)))
 
     (test-equal "The rain i" (show #f (trimmed/lazy 10 str)))
-    (test-equal "The rai..." (show #f (with ((ellipsis "...")) (trimmed/lazy 10 str))))
     (test-equal str (show #f (trimmed/lazy 50 str)))
     (test-equal "(42 42 42 42 42 4"
       (show #f (trimmed/lazy 17 (written-simply (let1 xs (cons 42 #f) (set-cdr! xs xs) xs)))))
@@ -192,22 +191,22 @@
 
     (test-equal "bar" (substring-terminal-width "foobarbaz" 3 6))
     (test-equal "bar" (substring-terminal-width/wide "foobarbaz" 3 6))
-    (test-equal "baz" (substring-terminal-width "foobarbaz" 6))
-    (test-equal "baz" (substring-terminal-width/wide "foobarbaz" 6))
+    (test-equal "baz" (substring-terminal-width "foobarbaz" 6 9))
+    (test-equal "baz" (substring-terminal-width/wide "foobarbaz" 6 9))
     (test-equal "ｏｏｂ" (substring-terminal-width "ｆｏｏｂａｒ" 2 8))
     (test-equal "ｏｂ" (substring-terminal-width "ｆｏｏｂａｒ" 3 8))
     (test-equal "ｏｏ" (substring-terminal-width "ｆｏｏｂａｒ" 2 7))
-    (test-equal "ｂａｒ" (substring-terminal-width "ｆｏｏｂａｒ" 6))
-    (test-equal "l̴̡̃g̴̩̈́o̸͉͑" (substring-terminal-width "ź̶̖a̸̱̔l̴̡̃g̴̩̈́o̸͉͑" 2))
+    (test-equal "ｂａｒ" (substring-terminal-width "ｆｏｏｂａｒ" 6 12))
+    (test-equal "l̴̡̃g̴̩̈́o̸͉͑" (substring-terminal-width "ź̶̖a̸̱̔l̴̡̃g̴̩̈́o̸͉͑" 2 5))
     (test-equal "l̴̡̃g̴̩̈́" (substring-terminal-width "ź̶̖a̸̱̔l̴̡̃g̴̩̈́o̸͉͑" 2 4))
-    (test-equal "4" (substring-terminal-width "12Å34" 4))
-    (test-equal "34" (substring-terminal-width/wide "12Å34" 4))
+    (test-equal "4" (substring-terminal-width "12Å34" 4 6))
+    (test-equal "34" (substring-terminal-width/wide "12Å34" 4 6))
 
     (test-equal
       (with-output-to-string (λ() (write-in-color red "oo")))
       (substring-terminal-width
         (with-output-to-string (λ() (write-in-color red "foo")))
-        1))
+        1 3))
     (test-equal
       (with-output-to-string (λ()
         (write-in-color blue "oo")
@@ -275,8 +274,7 @@ Applies KONS to each element of
 LS and the result of the previous
 application, beginning with KNIL.
 With KONS as CONS and KNIL as '(),
-equivalent to REVERSE.
-"
+equivalent to REVERSE."
       (show #f (with ((width 36)) (wrapped doc))))
 
     (test-equal "The fundamental list iterator.
@@ -284,8 +282,7 @@ Applies KONS to each element of
 LS and the result of the previous
 application, beginning with KNIL.
 With KONS as CONS and KNIL as '(),
-equivalent to REVERSE.
-"
+equivalent to REVERSE."
       (show #f (with ((width 36)) (wrapped/list doc/list))))
 
     (test-equal "The fundamental list iterator.  Appl
@@ -293,8 +290,7 @@ ies KONS to each element of LS and t
 he result of the previous applicatio
 n, beginning with KNIL.  With KONS a
 s CONS and KNIL as '(), equivalent t
-o REVERSE.
-"
+o REVERSE."
       (show #f (with ((width 36)) (wrapped/char doc))))
 
     (test-equal "The   fundamental   list   iterator.
@@ -302,7 +298,6 @@ Applies  KONS  to  each  element  of
 LS  and  the  result of the previous
 application,  beginning  with  KNIL.
 With  KONS  as CONS and KNIL as '(),
-equivalent to REVERSE.
-"
+equivalent to REVERSE."
       (show #f (with ((width 36)) (justified doc)))))
 )

@@ -290,7 +290,7 @@
                                 (cut span-list-width string-width <>)
                                 cons)
                (reverse)
-               (joined/suffix
+               (joined
                  (λ=> (map (λ=> (list->generator) (span-generator->formatter)))
                       (joined each <> pad-char))
                  <>
@@ -298,41 +298,39 @@
 
     (define (wrapped/list ls)
       (fn (width string-width pad-char)
-        (joined/suffix
+        (joined
           (cut joined displayed <> pad-char)
           (reverse (wrap-fold-words ls '() width string-width cons))
           fl)))
 
     (define (wrapped/char . ls)
       (fn (width string-width substring/width)
-        (each
-          (call-with-output-generator (each-in-list ls) (λ gen
-            (span-generator->formatter
-              (let1 remaining width
-                (λ()
-                  (let* ((span (gen))
-                         (w (and (span? span) (string-width (span-text span)))))
-                    (cond
-                      ((eof-object? span) span)
-                      ((eqv? 'newline (span-type span))
-                        (set! remaining width)
-                        span)
-                      ((<= w remaining)
-                        (set! remaining (- remaining w))
-                        span)
-                      ((zero? remaining)
-                        (set! remaining width)
-                        (set! gen (gappend (generator span) gen))
-                        (newline-span))
-                      (else
-                        (let1 split-at remaining
-                          (set! gen (gappend (generator
-                                               (newline-span)
-                                               (span-map-text (cut substring/width <> split-at) span))
-                                             gen))
-                          (set! remaining (- w split-at))
-                          (span-map-text (cut substring/width <> 0 split-at) span))))))))))
-          fl)))
+        (call-with-output-generator (each-in-list ls) (λ gen
+          (span-generator->formatter
+            (let1 remaining width
+              (λ()
+                (let* ((span (gen))
+                       (w (and (span? span) (string-width (span-text span)))))
+                  (cond
+                    ((eof-object? span) span)
+                    ((eqv? 'newline (span-type span))
+                      (set! remaining width)
+                      span)
+                    ((<= w remaining)
+                      (set! remaining (- remaining w))
+                      span)
+                    ((zero? remaining)
+                      (set! remaining width)
+                      (set! gen (gappend (generator span) gen))
+                      (newline-span))
+                    (else
+                      (let1 split-at remaining
+                        (set! gen (gappend (generator
+                                             (newline-span)
+                                             (span-map-text (cut substring/width <> split-at) span))
+                                           gen))
+                        (set! remaining (- w split-at))
+                        (span-map-text (cut substring/width <> 0 split-at) span))))))))))))
 
     (define (justified . ls)
       (fn (width string-width pad-char)
@@ -368,5 +366,4 @@
                        (reverse init))
                      (joined (λ=> (list->generator) (span-generator->formatter))
                              last
-                             pad-char)
-                     fl)))))))))
+                             pad-char))))))))))
