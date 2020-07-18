@@ -22,7 +22,9 @@
   (begin
     (define (color-fmt color fmts)
       (λ vars
-        (gmap (λ s (span-with-color (merge-colors (span-color s) color) s))
+        (gmap (λ s (span-with-color s (if (span-color s)
+                                        (merge-colors color (span-color s))
+                                        color)))
               ((each-in-list fmts) vars))))
 
     (define (as-red . fmts) (color-fmt red fmts))

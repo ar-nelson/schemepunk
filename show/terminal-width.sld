@@ -7,7 +7,8 @@
     ((and chicken unix)
       (import (ioctl))
       (begin (define (get-terminal-width)
-               (cadr (ioctl-winsize)))))
+               (guard (e (#t 80))
+                 (cadr (ioctl-winsize))))))
     (gauche
       (import (only (text console) call-with-console
                                    make-default-console

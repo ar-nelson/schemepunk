@@ -13,6 +13,7 @@
           (scheme write)
           (schemepunk syntax)
           (schemepunk list)
+          (schemepunk box)
           (schemepunk generator)
           (schemepunk term-colors)
           (schemepunk show span)
@@ -105,13 +106,50 @@
     (define (datum->string datum)
       (with-output-to-string (λ() (write datum))))
 
+    (define-record-type Datum-Shared-Context
+      (make-datum-shared-context mode seen next-label labels)
+      datum-shared-context?
+      (mode ctx-mode)
+      (seen %ctx-seen)
+      (next-label ctx-next-label)
+      (labels %ctx-labels))
+
+    (define (ctx-seen ctx)
+      (case (ctx-mode ctx)
+        ((shared) (unbox (%ctx-seen ctx)))
+        (else (%ctx-seen ctx))))
+
+    (define (ctx-labels ctx)
+      (unbox (%ctx-labels ctx)))
+
+    (define (ctx-cons-seen ctx datum)
+      (make-datum-shared-context
+        (ctx-mode ctx)
+        (cons datum (%ctx-seen ctx))
+        (ctx-next-label ctx)
+        (%ctx-labels ctx)))
+
+    (define (ctx-add-seen! ctx datum)
+      (update-box! (%ctx-seen ctx) (cut cons datum <>))
+      ctx)
+
+    (define (ctx-add-label! ctx datum)
+      (define label (unbox (ctx-next-label ctx)))
+      (update-box!
+        (%ctx-labels ctx)
+        (λ xs (cons (cons datum label) xs)))
+      (set-box! (ctx-next-label ctx) (+ label 1))
+      label)
+
     (define datum-shared-context (make-parameter #f))
 
     (define (pair->block-body pair)
-      (match-let* (((head . tail) pair)
-                   (ctx (datum-shared-context))
-                   ((seen _ labels mode) ctx)
-                   (head-block (datum->block head)))
+      (let* ((head (car pair))
+             (tail (cdr pair))
+             (ctx (datum-shared-context))
+             (seen (ctx-seen ctx))
+             (mode (ctx-mode ctx))
+             (head-block (datum->block head)))
         (cons head-block
           (cond
             ((null? tail) '())
@@ -122,7 +160,7 @@
                         (make-block (pair->block-body tail))))))
             ((or (not (pair? tail))
                  (and (not (eqv? mode 'simple))
-                      (or (memq tail seen) (assq tail labels))))
+                      (or (memq tail seen) (assq tail (ctx-labels ctx)))))
               (list (whitespace-span)
                     (text-span "." (datum-color-list))
                     (whitespace-span)
@@ -130,9 +168,8 @@
             (else
               (parameterize ((datum-shared-context
                                (case mode
-                                 ((shared) ctx)
-                                 (else (cons (cons tail seen) (cdr ctx))))))
-                (case mode ((shared) (set-car! ctx (cons tail (car ctx)))))
+                                 ((shared) (ctx-add-seen! ctx tail))
+                                 (else (ctx-cons-seen ctx tail)))))
                 (cons (whitespace-span) (pair->block-body tail))))))))
 
     (define (%datum->block datum)
@@ -236,23 +273,22 @@
 
     (define (datum->block datum)
       (define ctx (datum-shared-context))
-      (match ctx
-        ((seen next-label labels mode)
+      (if ctx
+        (let ((mode (ctx-mode ctx))
+              (seen (ctx-seen ctx))
+              (labels (ctx-labels ctx)))
           (if (and (not (eqv? mode 'simple)) (memq datum seen))
             (let1 label (match (assq datum labels)
                           ((_ . label) label)
-                          (else
-                            (set-car! (cdr ctx) (+ next-label 1))
-                            (set-car! (cddr ctx) `((,datum . ,next-label) ,@labels))
-                            next-label))
+                          (else (ctx-add-label! ctx datum)))
               (text-span (format #f "#~a#" label) (datum-color-structure)))
             (case mode
               ((simple)
                 (delay
-                  (parameterize ((datum-shared-context `((,datum ,@seen) ,@(cdr ctx))))
+                  (parameterize ((datum-shared-context (ctx-cons-seen ctx datum)))
                     (%datum->block datum))))
               ((cycles)
-                (parameterize ((datum-shared-context `((,datum ,@seen) ,@(cdr ctx))))
+                (parameterize ((datum-shared-context (ctx-cons-seen ctx datum)))
                   (let ((label (chain-and (assq datum labels) (cdr)))
                         (block (%datum->block datum)))
                     (if label
@@ -262,7 +298,7 @@
                       block))))
               ((shared)
                 (when (or (pair? datum) (vector? datum) (record? datum))
-                  (set-car! ctx (cons datum (car ctx))))
+                  (ctx-add-seen! ctx datum))
                 (let ((label (chain-and (assq datum labels) (cdr)))
                       (block (%datum->block datum)))
                   (if label
@@ -270,24 +306,43 @@
                       block
                       (text-span (format #f "#~a=" label) (datum-color-structure)))
                     block))))))
-        (else
-          (parameterize ((datum-shared-context (list '() 0 '() 'cycles)))
-            (match-let* ((without-shared (datum->block datum))
-                         ((_ next-label labels _) (datum-shared-context)))
-              (if (positive? next-label)
-                (parameterize ((datum-shared-context `(() -1 ,labels cycles)))
-                  (datum->block datum))
-                without-shared))))))
+        (parameterize ((datum-shared-context (make-datum-shared-context
+                                               'cycles
+                                               '()
+                                               (box 0)
+                                               (box '()))))
+          (let* ((without-shared (datum->block datum))
+                 (labels (ctx-labels (datum-shared-context))))
+            (if (pair? labels)
+              (parameterize ((datum-shared-context (make-datum-shared-context
+                                                     'cycles
+                                                     '()
+                                                     (box -1)
+                                                     (box labels))))
+                (datum->block datum))
+              without-shared)))))
 
     (define (datum->block/simple datum)
-      (parameterize ((datum-shared-context (list '() 0 '() 'simple)))
+      (parameterize ((datum-shared-context (make-datum-shared-context
+                                             'simple
+                                             '()
+                                             (box 0)
+                                             (box '()))))
         (force (datum->block datum))))
 
     (define (datum->block/shared datum)
-      (parameterize ((datum-shared-context (list '() 0 '() 'shared)))
-        (match-let* ((without-shared (datum->block datum))
-                     ((_ next-label labels _) (datum-shared-context)))
-          (if (positive? next-label)
-            (parameterize ((datum-shared-context `(() -1 ,labels shared)))
+      (parameterize ((datum-shared-context (make-datum-shared-context
+                                             'shared
+                                             (box '())
+                                             (box 0)
+                                             (box '()))))
+        (let* ((without-shared (datum->block datum))
+               (labels (ctx-labels (datum-shared-context))))
+          (if (pair? labels)
+            (parameterize ((datum-shared-context (make-datum-shared-context
+                                                   'shared
+                                                   (box '())
+                                                   (box -1)
+                                                   (box labels))))
               (datum->block datum))
             without-shared))))))

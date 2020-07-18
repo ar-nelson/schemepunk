@@ -218,7 +218,10 @@
         1 4))
 
     (test-equal "ABC" (show #f (upcased "abc")))
-    (test-equal "μέλος" (show #f (downcased "ΜΈΛΟΣ"))))
+    (test-equal "abc" (show #f (downcased "ABC")))
+    (cond-expand
+      (gerbil) ; gerbil doesn't handle Unicode final forms, nothing we can do :(
+      (else (test-equal "μέλος" (show #f (downcased "ΜΈΛΟΣ"))))))
 
   (test-group "columnar"
     (test-equal "abc     123\ndef     456\n"

@@ -177,10 +177,10 @@
         (else
           (let-values (((ps1 fg1 bg1) (extract-long-colors (color-params c1)))
                        ((ps2 fg2 bg2) (extract-long-colors (color-params c2))))
-            (chain ps2
-                   (fold
-                     (λ(p ps) (filter (cut sgr-param-overrides? p <>) ps))
-                     ps1)
+            (chain (fold
+                     (λ(p ps) (remove (cut sgr-param-overrides? p <>) ps))
+                     ps1
+                     ps2)
                    (append <>
                            ps2
                            (or fg2 fg1 '())

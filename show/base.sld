@@ -18,8 +18,14 @@
 
           span-generator->formatter call-with-output-generator)
 
-  (import (scheme base)
-          (scheme case-lambda)
+  (cond-expand
+    (chicken
+      (import (except (scheme base) string-length substring)
+              (only (utf8) string-length substring)))
+    (else
+      (import (scheme base))))
+
+  (import (scheme case-lambda)
           (scheme char)
           (scheme write)
           (schemepunk syntax)
