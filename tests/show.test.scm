@@ -225,6 +225,10 @@
       (show #f (with ((width 16))
                  (columnar (each "abc\ndef\n")
                            (each "123\n456\n")))))
+    (test-equal "abc     123\ndef     \n        456\n"
+      (show #f (with ((width 16))
+                 (columnar (each "abc\ndef")
+                           (each "123\n\n456\n")))))
     (test-equal "abc     123\ndef     456\n"
       (show #f (with ((width 16))
                  (columnar (each "abc\ndef")

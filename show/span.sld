@@ -67,24 +67,27 @@
             ((and read-ansi-escapes? (eqv? c #\escape))
               (match (next-char)
                 (#\[
-                  (let ((old-color color)
-                        (text (get-output-string span)))
-                    (cond
-                      ((zero? (string-length text))
+                  (let1 text (get-output-string span)
+                    (if (zero? (string-length text))
+                      (begin
                         (set! color (merge-colors color (read-color next-char)))
                         (loop (next-char)))
-                      (else
+                      (let ((new-color (read-color next-char))
+                            (ret (make-span mode text color)))
                         (set! span (open-output-string))
-                        (set! color (read-color next-char))
-                        (make-span mode text old-color)))))
+                        (set! color (if (color-is-reset? new-color) #f new-color))
+                        ret))))
                 (c2
                   (write-char c span)
                   (loop c2))))
             (else
-              (let1 new-mode (match c ((or #\return #\newline) 'newline)
-                                      ((? word-separator?) 'whitespace)
-                                      (else 'text))
-                (if (eq? mode new-mode)
+              (let1-values (new-mode continue?)
+                           (match c
+                             (#\newline (values 'newline #f))
+                             ((? word-separator?)
+                               (values 'whitespace (eqv? mode 'whitespace)))
+                             (else (values 'text (eqv? mode 'text))))
+                (if continue?
                   (begin (write-char c span)
                          (loop (next-char)))
                   (let ((old-mode mode)

@@ -1,6 +1,6 @@
 (define-library (schemepunk term-colors)
   (export
-    make-color color? color->string
+    make-color color? color->string color-is-reset?
     make-8-bit-color make-24-bit-color make-8-bit-color/bg make-24-bit-color/bg
 
     fg-black fg-red fg-yellow fg-green
@@ -111,6 +111,12 @@
       (case-lambda
         (() (write-color reset))
         ((port) (write-color reset port))))
+
+    (define (color-is-reset? color)
+      (match (color-params color)
+        (() #t)
+        (("0") #t)
+        (else #f)))
 
     (define+ (write-in-color color text :optional (port (current-output-port)))
       (write-color color port)
