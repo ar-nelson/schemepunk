@@ -56,9 +56,11 @@
    bag->alist alist->bag)
 
   (import (scheme base)
+          (schemepunk syntax)
           (schemepunk list)
-          (schemepunk debug indent)
-          (schemepunk debug indent scheme))
+          (schemepunk show span)
+          (schemepunk show block)
+          (schemepunk show block datum))
 
   (cond-expand
     (chicken (import (srfi 113)))
@@ -80,10 +82,18 @@
                "polyfills/bags.scm")))
 
   (begin
-    (define (set->indent set)
-      (make-indent-group
-        (color (color-scheme-structure) "#<set [")
-        (list->indents (set->list set))
-        (color (color-scheme-structure) "]>")))
+    (define (set->block set)
+      (define color (datum-color-record))
+      (if (set-empty? set)
+        (make-block (list (text-span "#,(set)" color)))
+        (make-block
+          (list
+            (text-span "#,(set" color)
+            (whitespace-span))
+          (chain (set->list set)
+                 (map datum->block)
+                 (intercalate (whitespace-span)))
+          (list
+            (text-span ")" color)))))
 
-    (register-datatype-debug-writer! set? set->indent)))
+    (register-datum-writer! set? set->block)))

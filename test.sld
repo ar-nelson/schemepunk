@@ -14,9 +14,8 @@
           (scheme cxr)
           (schemepunk syntax)
           (only (schemepunk list) snoc last drop-right)
-          (schemepunk debug)
-          (schemepunk debug indent)
-          (schemepunk term-colors))
+          (schemepunk show)
+          (schemepunk show report))
 
   (cond-expand
     (chicken
@@ -85,12 +84,11 @@
     (define failed '())
     (define current-test-group '())
 
-    (define (write-indent)
-      (for-each (lambda (_) (write-string "  ")) current-test-group))
+    (define (indent)
+      (make-string (* (length current-test-group) 2) #\space))
 
     (define (test-begin name)
-      (write-indent)
-      (format #t "~a:~%" name)
+      (show #t (indent) (as-underline name ":") nl)
       (set! current-test-group (snoc current-test-group name)))
 
     (define (test-end name)
@@ -117,15 +115,11 @@
 
     (define (pass-test name)
       (set! passed-count (+ passed-count 1))
-      (write-indent)
-      (write-colored green (string-append "✓ " name))
-      (newline))
+      (show #t (indent) (as-green "✓ " name) nl))
 
     (define (fail-test name err)
       (set! failed (snoc failed `(,current-test-group ,name ,err)))
-      (write-indent)
-      (write-colored red (string-append "✗ " name))
-      (newline))
+      (show #t (indent) (as-red "✗ " name) nl))
 
     (define-syntax test
       (syntax-rules ()
@@ -134,7 +128,7 @@
                          (fail-test name
                            (let ((str (open-output-string)))
                              (write-test-error err str)
-                             (color red (get-output-string str)))))
+                             (as-red (get-output-string str)))))
                        (#t (fail-test name err)))
                   (begin (inline-defines body ...)
                          (pass-test name))))))
@@ -145,16 +139,16 @@
     (define-syntax assert-true
       (syntax-rules ()
         ((assert-true condition)
-           (unless condition (fail '(assert-true condition))))
+          (unless condition (fail '(assert-true condition))))
         ((assert-true msg condition)
-           (unless condition (fail msg)))))
+          (unless condition (fail msg)))))
 
     (define-syntax assert-false
       (syntax-rules ()
         ((assert-true condition)
-           (when condition (fail '(assert-false condition))))
+          (when condition (fail '(assert-false condition))))
         ((assert-true msg condition)
-           (when condition (fail msg)))))
+          (when condition (fail msg)))))
 
     (define current-test-comparator (make-parameter equal?))
 
@@ -168,13 +162,13 @@
 
     (define (assert-equal actual expected)
       (unless ((current-test-comparator) actual expected)
-        (fail (form->indent actual) (form->indent expected))))
+        (fail actual expected)))
 
     (define (assert-approximate actual expected error)
       (unless (and (number? actual)
                    (>= actual (- expected error))
                    (<= actual (+ expected error)))
-        (fail (form->indent actual) (form->indent expected))))
+        (fail actual expected)))
 
     (define-syntax test-assert
       (syntax-rules ()
@@ -232,25 +226,29 @@
     (define (failure? x)
       (and (pair? x) (eq? (car x) 'test-failure)))
 
-    (define (failure->report suite test err)
-      (cond
-        ((failure? err)
-           (make-report test
-             (cond
-               ((pair? (cddr err))
-                  (make-paragraph "Expected {0} but got {1}" (caddr err) (cadr err)))
-               ((string? (cadr err))
-                  (make-paragraph (cadr err)))
-               ((or (colored-text? (cadr err)) (indent-group? (cadr err)))
-                  (cadr err))
-               (else
-                  (form->indent (cadr err))))))
-        ((or (colored-text? err) (indent-group? err))
-          (make-report test err))
-        (else
-          (make-report test
-            (color red "Test raised error:")
-            (form->indent err)))))
+    (define (reported-failure suite test err)
+      (reported test
+        (cond
+          ((failure? err)
+            (cond
+              ((pair? (cddr err))
+                (wrapped/blocks
+                  "Expected "
+                  (pretty-color (caddr err))
+                  " but got "
+                  (pretty-color (cadr err))))
+              ((string? (cadr err))
+                (wrapped (cadr err)))
+              ((procedure? (cadr err))
+                (cadr err))
+              (else
+                (pretty-color (cadr err)))))
+          ((procedure? err)
+            err)
+          (else
+            (wrapped/blocks
+              (as-red "Test raised error: ")
+              (pretty-color err))))))
 
     (define-syntax chibi-test-shim
       (syntax-rules ()
@@ -262,12 +260,21 @@
             . chibi-test-body))))
 
     (define (end-test-runner)
-      (write-colored green
-        (string-append (number->string passed-count) " tests passed"))
-      (newline)
-      (unless (null? failed)
-        (write-colored red
-          (string-append (number->string (length failed)) " tests failed"))
-        (newline)
-        (write-reports (map (lambda (x) (apply failure->report x)) failed)))
-      (exit (length failed)))))
+      (define failed-count (length failed))
+      (show #t
+        nl
+        (as-bold (as-green
+          passed-count
+          (if (= 1 passed-count) " test" " tests")
+          " passed"))
+        nl)
+      (unless (zero? failed-count)
+        (show #t
+          (as-bold (as-red
+            failed-count
+            (if (= 1 failed-count) " test" " tests")
+            " failed"))
+          nl
+          (each-in-list (map (cut apply reported-failure <>) failed))
+          report-line))
+      (exit failed-count))))

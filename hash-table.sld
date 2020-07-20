@@ -35,8 +35,10 @@
 
   (import (scheme base)
           (schemepunk syntax)
-          (schemepunk debug indent)
-          (schemepunk debug indent scheme))
+          (schemepunk list)
+          (schemepunk show span)
+          (schemepunk show block)
+          (schemepunk show block datum))
 
   (cond-expand
     (gauche
@@ -64,17 +66,28 @@
        (include "polyfills/hash.scm")))
 
   (begin
-    (define (hash-table->indent table)
-      (make-indent-group
-        (color (color-scheme-structure) "#<hash-table {")
-        (map (λ x (make-indent-group
-                    (make-indent-group
-                      #f
-                      (list (form->indent (car x)))
-                      (color (color-scheme-structure) ":"))
-                    (list (form->indent (cdr x)))
-                    #f))
-             (hash-table->alist table))
-        (color (color-scheme-structure) "}>")))
+    (define (hash-table->block ht)
+      (define color (datum-color-record))
+      (if (hash-table-empty? ht)
+        (make-block (list (text-span "#,(hash-table)" color)))
+        (make-block
+          (list
+            (text-span "#,(hash-table" color)
+            (whitespace-span))
+          (intercalate (whitespace-span)
+            (map
+              (λ((k . v))
+                (make-block
+                  (list
+                    (text-span "(" color)
+                    (datum->block k)
+                    (whitespace-span))
+                  (list
+                    (datum->block v))
+                  (list
+                    (text-span ")" color))))
+              (hash-table->alist ht)))
+          (list
+            (text-span ")" color)))))
 
-    (register-datatype-debug-writer! hash-table? hash-table->indent)))
+    (register-datum-writer! hash-table? hash-table->block)))

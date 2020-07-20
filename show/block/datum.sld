@@ -245,26 +245,40 @@
             (and-let* ((rtd (record-rtd datum))
                        (fields (vector->list (rtd-all-field-names rtd))))
               (if (null? fields)
-                (text-span (format #f "#<~s>" (rtd-name rtd))
-                           (datum-color-record))
                 (make-block
                   (list
-                    (text-span (format #f "#<~s" (rtd-name rtd))
-                               (datum-color-record))
+                    (text-span "#,(record" (datum-color-record))
                     (whitespace-span))
-                  (chain
-                    fields
+                  (list
+                    (text-span (symbol->string (rtd-name rtd))
+                               (datum-color-record)))
+                  (list
+                    (text-span ")" (datum-color-record))))
+                (make-block
+                  (list
+                    (make-block
+                      (list
+                        (text-span "#,(record" (datum-color-record))
+                        (whitespace-span))
+                      (list
+                        (text-span (symbol->string (rtd-name rtd))
+                                   (datum-color-record))))
+                    (whitespace-span))
+                  (intercalate (whitespace-span)
                     (map
                       (λ field
                         (make-block
                           (list
-                            (text-span (format #f "~s:" field)
-                                       (datum-color-record)))
+                            (text-span (format #f "(~s" field)
+                                       (datum-color-record))
+                            (whitespace-span))
                           (list
-                            (datum->block ((rtd-accessor rtd field) datum))))))
-                    (intercalate (whitespace-span)))
+                            (datum->block ((rtd-accessor rtd field) datum)))
+                          (list
+                            (text-span ")" (datum-color-record)))))
+                      fields))
                   (list
-                    (text-span ">" (datum-color-record))))))
+                    (text-span ")" (datum-color-record))))))
             (make-block
               (list (text-span (datum->string datum) (datum-color-record))))))
         (else

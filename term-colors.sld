@@ -23,7 +23,7 @@
     bold-black bold-red bold-yellow bold-green
     bold-blue bold-cyan bold-magenta bold-white
 
-    write-colored write-in-color write-color reset-color
+    write-in-color write-color reset-color
     read-color merge-colors
 
     term-colors-enabled?)
@@ -122,8 +122,6 @@
       (write-color color port)
       (write-string text port)
       (reset-color port))
-
-    (define write-colored write-in-color)
 
     (define+ (read-color :optional (next-char read-char))
       (let loop ((c (next-char)) (n '()) (params '()))
