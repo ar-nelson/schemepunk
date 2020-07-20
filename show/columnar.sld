@@ -1,13 +1,14 @@
 (define-library (schemepunk show columnar)
   (export columnar tabular
+          boxed boxed/double boxed/ascii boxed/custom
           wrapped wrapped/list wrapped/char justified
           from-file line-numbers)
 
   (import (scheme base)
           (scheme cxr)
           (scheme file)
-          (schemepunk list)
           (schemepunk syntax)
+          (schemepunk list)
           (schemepunk generator)
           (schemepunk show base)
           (schemepunk show span)
@@ -187,16 +188,47 @@
       (fn ((total-width width) string-width pad-char (start-row row))
         (λ vars
           ((span-generator->formatter
-             (chain (build-columns columns string-width pad-char)
-                    (map (λ col (set-car! (cdr col) (or (cadr col) 0)) col))
-                    (distribute-column-widths total-width)
-                    (map
-                      (λ((fmt col-width . rest))
-                        `(,((with ((row start-row) (col 0) (width col-width)) fmt) vars)
-                          ,col-width
-                          ,@rest)))
-                    (table-gen string-width pad-char)))
+             (let1 cols (build-columns columns string-width pad-char)
+               (chain (distribute-column-widths total-width cols)
+                      (map
+                        (λ((_ orig-width . _) (fmt col-width . rest))
+                          `(,((with ((row start-row) (col 0) (width col-width)) fmt) vars)
+                            ,(if orig-width col-width 0)
+                            ,@rest))
+                        cols)
+                      (table-gen string-width pad-char))))
            vars))))
+
+    (define (boxed . contents)
+      (apply boxed/custom each #\─ #\│ #\┌ #\┐ #\└ #\┘ contents))
+
+    (define (boxed/double . contents)
+      (apply boxed/custom each #\═ #\║ #\╔ #\╗ #\╚ #\╝ contents))
+
+    (define (boxed/ascii . contents)
+      (apply boxed/custom each #\- #\| #\+ #\+ #\+ #\+ contents))
+
+    (define (boxed/custom color h v nw ne sw se . contents)
+      (call-with-output-generator
+        (tabular
+          1 'infinite (each-in-list (circular-list (color v) nl))
+          (each-in-list contents)
+          1 'infinite (each-in-list (circular-list (color v) nl)))
+        (λ gen
+          (fn (string-width)
+            (let*-values
+              (((gen gen2) (gfork gen))
+               ((len) (chain gen2
+                             (gtake-while (λ=> (span-type) (eq? 'newline) (not)))
+                             (gmap (λ=> (span-text) (string-width)))
+                             (generator-fold + 0))))
+              (each
+                (color nw (make-string (- len 2) h) ne)
+                nl
+                (span-generator->formatter gen)
+                fl
+                (color sw (make-string (- len 2) h) se)
+                nl))))))
 
     (define (from-file pathname)
       (span-generator->formatter

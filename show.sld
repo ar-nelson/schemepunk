@@ -17,6 +17,7 @@
           ambiguous-is-wide?)
   (export pretty pretty-shared pretty-simply pretty-color)
   (export columnar tabular
+          boxed boxed/double boxed/ascii boxed/custom
           wrapped wrapped/list wrapped/char justified
           from-file line-numbers)
   (export terminal-aware
