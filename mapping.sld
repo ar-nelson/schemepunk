@@ -42,8 +42,9 @@
           (schemepunk syntax)
           (schemepunk list)
           (schemepunk comparator)
-          (schemepunk debug indent)
-          (schemepunk debug indent scheme))
+          (schemepunk show span)
+          (schemepunk show block)
+          (schemepunk show block datum))
 
   (cond-expand
     (gauche
@@ -798,17 +799,28 @@
         (define mapping-comparator btree-comparator))))
 
   (begin
-    (define (mapping->indent mapping)
-      (make-indent-group
-        (color (color-scheme-structure) "#<mapping {")
-        (map (λ x (make-indent-group
-                    (make-indent-group
-                      #f
-                      (list (form->indent (car x)))
-                      (color (color-scheme-structure) ":"))
-                    (list (form->indent (cdr x)))
-                    #f))
-             (mapping->alist mapping))
-        (color (color-scheme-structure) "}>")))
+    (define (mapping->block mapping)
+      (define color (datum-color-record))
+      (if (mapping-empty? mapping)
+        (make-block (list (text-span "#,(mapping)" color)))
+        (make-block
+          (list
+            (text-span "#,(mapping" color)
+            (whitespace-span))
+          (intercalate (whitespace-span)
+            (map
+              (λ((k . v))
+                (make-block
+                  (list
+                    (text-span "(" color)
+                    (datum->block k)
+                    (whitespace-span))
+                  (list
+                    (datum->block v))
+                  (list
+                    (text-span ")" color))))
+              (mapping->alist mapping)))
+          (list
+            (text-span ")" color)))))
 
-    (register-datatype-debug-writer! mapping? mapping->indent)))
+    (register-datum-writer! mapping? mapping->block)))

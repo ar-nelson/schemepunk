@@ -5,7 +5,7 @@
           multimap->mapping multimap-key-comparator multimap-value-comparator
           multimap-copy
           multimap-ref
-          multimap-adjoin multimap-adjoin!  multimap-adjoin-set multimap-adjoin-set!
+          multimap-adjoin multimap-adjoin! multimap-adjoin-set multimap-adjoin-set!
           multimap-delete-key multimap-delete-key! multimap-clear!
           multimap-delete-value multimap-delete-value!
           multimap-union multimap-union! multimap-difference
@@ -20,8 +20,9 @@
           (schemepunk comparator)
           (schemepunk set)
           (schemepunk mapping)
-          (schemepunk debug indent)
-          (schemepunk debug indent scheme))
+          (schemepunk show span)
+          (schemepunk show block)
+          (schemepunk show block datum))
 
   (begin
     (define-record-type Multimap
@@ -190,21 +191,29 @@
       (assume (multimap? mmap))
       (set-multimap-mapping! mmap (mapping (multimap-key-comparator mmap))))
 
-    (define (multimap->indent mmap)
-      (make-indent-group
-        (color (color-scheme-structure) "#<multimap {")
-        (map (λ x (make-indent-group
-                    (make-indent-group
-                      #f
-                      (list (form->indent (car x)))
-                      (color (color-scheme-structure) ":"))
-                    (list
-                      (make-indent-group
-                        (color (color-scheme-structure) "[")
-                        (list->indents (set->list (cdr x)))
-                        (color (color-scheme-structure) "]")))
-                    #f))
-             (mapping->alist (multimap->mapping mmap)))
-        (color (color-scheme-structure) "}>")))
+    (define (multimap->block mmap)
+      (define color (datum-color-record))
+      (if (multimap-empty? mmap)
+        (make-block (list (text-span "#,(multimap)" color)))
+        (make-block
+          (list
+            (text-span "#,(multimap" color)
+            (whitespace-span))
+          (intercalate (whitespace-span)
+            (map
+              (λ((k . v))
+                (make-block
+                  (list
+                    (text-span "(" color)
+                    (datum->block k)
+                    (whitespace-span))
+                  (chain (set->list v)
+                         (map datum->block)
+                         (intercalate (whitespace-span)))
+                  (list
+                    (text-span ")" color))))
+              (mapping->alist (multimap->mapping mmap))))
+          (list
+            (text-span ")" color)))))
 
-    (register-datatype-debug-writer! multimap? multimap->indent)))
+    (register-datum-writer! multimap? multimap->block)))
