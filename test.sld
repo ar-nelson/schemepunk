@@ -80,15 +80,18 @@
             (error-object-irritants err))))))
 
   (begin
-    (define passed-count 0)
-    (define failed '())
+    (define passed-count (list 0))
+    (define failed (list '()))
+    (define test-result-formats '())
     (define current-test-group '())
 
     (define (indent)
       (make-string (* (length current-test-group) 2) #\space))
 
     (define (test-begin name)
-      (show #t (indent) (as-underline name ":") nl)
+      (set! test-result-formats (cons '() test-result-formats))
+      (set! passed-count (cons 0 passed-count))
+      (set! failed (cons '() failed))
       (set! current-test-group (snoc current-test-group name)))
 
     (define (test-end name)
@@ -96,7 +99,31 @@
         ((null? current-test-group)
           (error "test-end without test-begin" (list name)))
         ((equal? (last current-test-group) name)
-          (set! current-test-group (drop-right current-test-group 1)))
+          (set! current-test-group (drop-right current-test-group 1))
+          (let* ((group-passed (car passed-count))
+                 (group-failed (car failed))
+                 (counts (each " ("
+                               group-passed
+                               "/"
+                               (+ group-passed (length group-failed))
+                               ")"))
+                 (fmt (if (null? group-failed)
+                        (each (indent)
+                              (as-bold (as-green "✓ " name counts))
+                              nl)
+                        (each (indent)
+                              (as-bold (as-red "✗ " name counts ":"))
+                              nl
+                              (each-in-list (car test-result-formats))))))
+            (set! test-result-formats (cdr test-result-formats))
+            (set! passed-count (cdr passed-count))
+            (set-car! passed-count (+ group-passed (car passed-count)))
+            (set! failed (cdr failed))
+            (set-car! failed (append (car failed) group-failed))
+            (if (pair? test-result-formats)
+              (set-car! test-result-formats (cons fmt (car test-result-formats)))
+              (begin (show #t fmt)
+                     (flush-output-port)))))
         (else
           (error "test-end name does not match test-begin"
                  (list name (last current-test-group))))))
@@ -114,12 +141,14 @@
         ((_ . args) (test-group . args))))
 
     (define (pass-test name)
-      (set! passed-count (+ passed-count 1))
-      (show #t (indent) (as-green "✓ " name) nl))
+      (set-car! passed-count (+ (car passed-count) 1))
+      (set-car! test-result-formats
+        `(,(indent) ,(as-green "✓ " name) ,nl ,@(car test-result-formats))))
 
     (define (fail-test name err)
-      (set! failed (snoc failed `(,current-test-group ,name ,err)))
-      (show #t (indent) (as-red "✗ " name) nl))
+      (set-car! failed (snoc (car failed) `(,current-test-group ,name ,err)))
+      (set-car! test-result-formats
+        `(,(indent) ,(as-red "✗ " name) ,nl ,@(car test-result-formats))))
 
     (define-syntax test
       (syntax-rules ()
@@ -260,12 +289,12 @@
             . chibi-test-body))))
 
     (define (end-test-runner)
-      (define failed-count (length failed))
+      (define failed-count (length (car failed)))
       (show #t
         nl
         (as-bold (as-green
-          passed-count
-          (if (= 1 passed-count) " test" " tests")
+          (car passed-count)
+          (if (= 1 (car passed-count)) " test" " tests")
           " passed"))
         nl)
       (unless (zero? failed-count)
@@ -275,6 +304,7 @@
             (if (= 1 failed-count) " test" " tests")
             " failed"))
           nl
-          (each-in-list (map (cut apply reported-failure <>) failed))
+          (each-in-list (map (cut apply reported-failure <>) (car failed)))
           report-line))
+      (flush-output-port)
       (exit failed-count))))
