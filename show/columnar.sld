@@ -231,9 +231,9 @@
                 nl))))))
 
     (define (from-file pathname)
-      (span-generator->formatter
-        (call-with-input-file pathname
-          (λ port (cut read-char port)))))
+      (let1 port (open-input-file pathname)
+        (span-generator->formatter
+          (char-generator->span-generator (cut read-char port)))))
 
     (define+ (line-numbers :optional (start 0))
       (span-generator->formatter
