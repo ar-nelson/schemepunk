@@ -7,6 +7,7 @@
 
           with-input-from-string with-output-to-string
           and-let* receive cut cute format assume
+          nonnegative-integer?
 
           match match?
           match-lambda match-lambda* matchλ
@@ -231,6 +232,9 @@
                                    __)))))))
 
   (begin
+    (define (nonnegative-integer? x)
+      (and (number? x) (integer? x) (>= x 0)))
+
     (define-syntax λ=>
       (syntax-rules () ((_ . xs) (chain-lambda . xs))))
 

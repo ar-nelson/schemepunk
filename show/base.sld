@@ -285,8 +285,7 @@
         (nl vars)))
 
     (define (space-to column)
-      (assume (integer? column))
-      (assume (positive? column))
+      (assume (nonnegative-integer? column))
       (λ vars
         (let1 current-column (get-var vars col)
           (if (< current-column column)
@@ -299,8 +298,7 @@
             (generator)))))
 
     (define+ (tab-to :optional (tab-width 8))
-      (assume (integer? tab-width))
-      (assume (positive? tab-width))
+      (assume (nonnegative-integer? tab-width))
       (λ vars
         (let* ((current-column (get-var vars col))
                (offset (remainder current-column tab-width))
@@ -421,8 +419,7 @@
 
     (define (numeric/fitted width num . args)
       (assume (number? num))
-      (assume (integer? width))
-      (assume (positive? width))
+      (assume (nonnegative-integer? width))
       (call-with-output (apply numeric num args) (λ str
         (if (> (string-length str) width)
           (fn (precision decimal-sep comma-sep)
@@ -451,8 +448,7 @@
                              (get-var vars string-width)))))
 
     (define (padded width . fmts)
-      (assume (integer? width))
-      (assume (positive? width))
+      (assume (nonnegative-integer? width))
       (λ vars
         (let1-values (gen actual-width) (fork-width vars width fmts)
           (if (< actual-width width)
@@ -464,8 +460,7 @@
             gen))))
 
     (define (padded/right width . fmts)
-      (assume (integer? width))
-      (assume (positive? width))
+      (assume (nonnegative-integer? width))
       (λ vars
         (let1-values (gen actual-width) (fork-width vars width fmts)
           (if (< actual-width width)
@@ -477,8 +472,7 @@
             gen))))
 
     (define (padded/both width . fmts)
-      (assume (integer? width))
-      (assume (positive? width))
+      (assume (nonnegative-integer? width))
       (λ vars
         (let1-values (gen actual-width) (fork-width vars width fmts)
           (if (< actual-width width)
@@ -492,8 +486,7 @@
             gen))))
 
     (define (trimmed width . fmts)
-      (assume (integer? width))
-      (assume (positive? width))
+      (assume (nonnegative-integer? width))
       (call-with-output (each-in-list fmts)
         (λ str (λ vars
           (let* ((string-width (get-var vars string-width))
@@ -512,8 +505,7 @@
              vars))))))
 
     (define (trimmed/right width . fmts)
-      (assume (integer? width))
-      (assume (positive? width))
+      (assume (nonnegative-integer? width))
       (call-with-output (each-in-list fmts)
         (λ str (λ vars
           (let* ((string-width (get-var vars string-width))
@@ -530,8 +522,7 @@
              vars))))))
 
     (define (trimmed/both width . fmts)
-      (assume (integer? width))
-      (assume (positive? width))
+      (assume (nonnegative-integer? width))
       (call-with-output (each-in-list fmts)
         (λ str (λ vars
           (let* ((string-width (get-var vars string-width))
@@ -553,8 +544,7 @@
              vars))))))
 
     (define (trimmed/lazy width . fmts)
-      (assume (integer? width))
-      (assume (positive? width))
+      (assume (nonnegative-integer? width))
       (λ vars
         (match-let* ((string-width (get-var vars string-width))
                      (substring/width (get-var vars substring/width))
@@ -587,20 +577,17 @@
                  (list->generator)))))
 
     (define (fitted width . fmts)
-      (assume (integer? width))
-      (assume (positive? width))
+      (assume (nonnegative-integer? width))
       (call-with-output (padded width (each-in-list fmts))
                         (cut trimmed width <>)))
 
     (define (fitted/right width . fmts)
-      (assume (integer? width))
-      (assume (positive? width))
+      (assume (nonnegative-integer? width))
       (call-with-output (padded/right width (each-in-list fmts))
                         (cut trimmed/right width <>)))
 
     (define (fitted/both width . fmts)
-      (assume (integer? width))
-      (assume (positive? width))
+      (assume (nonnegative-integer? width))
       (call-with-output (padded/both width (each-in-list fmts))
                         (cut trimmed/both width <>)))
 
