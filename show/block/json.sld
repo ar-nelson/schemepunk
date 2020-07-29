@@ -15,21 +15,21 @@
           (schemepunk syntax)
           (schemepunk list)
           (schemepunk json)
-          (schemepunk generator)
           (schemepunk term-colors)
           (schemepunk show span)
-          (schemepunk show block))
+          (schemepunk show block)
+          (schemepunk show block datum))
 
   (begin
-    (define json-color-object (make-parameter yellow))
-    (define json-color-object-key (make-parameter cyan))
-    (define json-color-array (make-parameter white))
-    (define json-color-string (make-parameter green))
-    (define json-color-number (make-parameter magenta))
-    (define json-color-true (make-parameter red))
-    (define json-color-false (make-parameter red))
-    (define json-color-null (make-parameter red))
-    (define json-color-error (make-parameter red))
+    (define json-color-object (make-parameter #f))
+    (define json-color-object-key (make-parameter #f))
+    (define json-color-array (make-parameter #f))
+    (define json-color-string (make-parameter #f))
+    (define json-color-number (make-parameter #f))
+    (define json-color-true (make-parameter #f))
+    (define json-color-false (make-parameter #f))
+    (define json-color-null (make-parameter #f))
+    (define json-color-error (make-parameter #f))
 
     (define (with-default-json-colors thunk)
       (parameterize ((json-color-object yellow)
@@ -101,6 +101,9 @@
         ('null
           (make-block
             (list (text-span "null" (json-color-null)))))
-        (else
+        (datum
           (make-block
-            (list (text-span "<NOT JSON>" (json-color-error)))))))))
+            (list (text-span "(NOT JSON:" (json-color-error))
+                  (whitespace-span))
+            (list (datum->block datum))
+            (list (text-span ")" (json-color-error)))))))))

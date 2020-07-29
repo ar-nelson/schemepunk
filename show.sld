@@ -15,7 +15,8 @@
           radix precision decimal-sep decimal-align
           sign-rule comma-rule comma-sep word-separator?
           ambiguous-is-wide?)
-  (export pretty pretty-shared pretty-simply pretty-color)
+  (export pretty pretty-shared pretty-simply pretty-color
+          pretty-json pretty-json-color)
   (export columnar tabular
           boxed boxed/double boxed/ascii boxed/custom
           wrapped wrapped/list wrapped/char justified
