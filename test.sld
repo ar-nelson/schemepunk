@@ -262,10 +262,7 @@
             (cond
               ((pair? (cddr err))
                 (wrapped/blocks
-                  "Expected "
-                  (pretty-color (caddr err))
-                  " but got "
-                  (pretty-color (cadr err))))
+                  "Expected " (caddr err) " but got " (cadr err)))
               ((string? (cadr err))
                 (wrapped (cadr err)))
               ((procedure? (cadr err))
