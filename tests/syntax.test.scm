@@ -264,6 +264,12 @@
           ((a (o 'y e) …) (list e o))
           ((a (o 'x e) …) (list o e))
           (else #f))))
+    (test "match and"
+      (assert-equal
+        '((1 2 3) 2)
+        (match '((1 2 3) (4 5 6))
+          (((and x (y z w)) _) (list x z))
+          (else #f))))
     (test "match-guard"
       (assert-equal
         "foo"

@@ -1,6 +1,6 @@
 (define-library (schemepunk syntax)
   (export λ λ=>
-          chain chain-and chain-when chain-lambda
+          chain chain-and chain-when chain-lambda nest reverse-nest
           let1 let1-values
           inline-defines syntax-symbol-case
           one-of none-of dotimes
@@ -235,6 +235,16 @@
     (define (nonnegative-integer? x)
       (and (number? x) (integer? x) (>= x 0)))
 
+    (define-syntax nest
+      (syntax-rules ()
+        ((_ x) x)
+        ((_ (xs ...) y . zs) (xs ... (nest y . zs)))))
+
+    (define-syntax reverse-nest
+      (syntax-rules ()
+        ((_ x) x)
+        ((_ x (ys ...) . zs) (reverse-nest (ys ... x) . zs))))
+
     (define-syntax λ=>
       (syntax-rules () ((_ . xs) (chain-lambda . xs))))
 
@@ -375,9 +385,9 @@
         ((_ _ _ (? _) body) body)
         ((_ subject over (? _ name) body) (match-body-let subject over name body))
         ((_ subject over (and pat ...) body)
-          (chain body (match-body subject over pat) ...))
+          (nest (match-body subject over pat) ... body))
         ((_ subject over (or pat ...) body)
-          (chain body (match-body subject over pat) ...))
+          (nest (match-body subject over pat) ... body))
         ((_ _ _ (not _) body) body)
         ((_ subject over (pat ___) body)
           (match-body ellipsis ((ellipsis subject) . over) pat body))
