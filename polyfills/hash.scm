@@ -76,6 +76,16 @@
 
 (define missing-key (list 'missing-key))
 
+(define hash-table-ref
+  (case-lambda
+    ((ht key failure success)
+      (let ((result (hash-table-ref/default ht key missing-key)))
+        (if (eq? missing-key result)
+          (failure)
+          (success result))))
+    ((ht key failure) (%hash-table-ref ht key failure))
+    ((ht key) (%hash-table-ref ht key))))
+
 (define (hash-table=? value-cmp ht1 ht2)
   (and (= (hash-table-size ht1)
           (hash-table-size ht2))

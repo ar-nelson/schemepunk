@@ -54,9 +54,10 @@
          ((library (srfi 125)) (import (srfi 125)))
          ((library (std srfi 125)) (import (std srfi 125)))))
     (else
-       (import (scheme base)
+       (import (scheme case-lambda)
                (except (schemepunk comparator) string-hash string-ci-hash)
                (rename (srfi 69)
+                       (hash-table-ref %hash-table-ref)
                        (make-hash-table %make-hash-table)
                        (alist->hash-table %alist->hash-table)
                        (hash-table-copy %hash-table-copy)
