@@ -29,10 +29,13 @@
         ((head body tail)
           (assume (list? head))
           (assume (list? body))
-          (assume (pair? body))
           (assume (proper-list? body))
           (assume (list? tail))
-          (%make-block head body tail))))
+          (cond
+            ((pair? body) (%make-block head body tail))
+            ((pair? tail) (%make-block head tail '()))
+            ((pair? head) (%make-block '() head '()))
+            (else (%make-block '() (list (text-span "")) '()))))))
 
     (define (whitespace? x)
       (and (span? x)
