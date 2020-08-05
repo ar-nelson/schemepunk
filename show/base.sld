@@ -193,18 +193,19 @@
 
     (define (each-in-list list-of-fmts)
       (define (get-fmt fmt) (if (procedure? fmt) fmt (displayed fmt)))
+      (assume (or (null? list-of-fmts) (pair? list-of-fmts)))
       (match list-of-fmts
         (() nothing)
         ((fmt) (get-fmt fmt))
         (else
           (λ vars
-            (let1 gen ((get-fmt (car list-of-fmts)) vars)
-              (set! list-of-fmts (cdr list-of-fmts))
+            (let ((gen ((get-fmt (car list-of-fmts)) vars))
+                  (fmts (cdr list-of-fmts)))
               (λ ()
                 (let loop ((next (gen)))
-                  (if (and (eof-object? next) (pair? list-of-fmts))
-                    (begin (set! gen ((get-fmt (car list-of-fmts)) vars))
-                           (set! list-of-fmts (cdr list-of-fmts))
+                  (if (and (eof-object? next) (pair? fmts))
+                    (begin (set! gen ((get-fmt (car fmts)) vars))
+                           (set! fmts (cdr fmts))
                            (loop (gen)))
                     next))))))))
 

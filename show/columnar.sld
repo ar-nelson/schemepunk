@@ -2,6 +2,7 @@
   (export columnar tabular
           boxed boxed/double boxed/ascii boxed/custom
           wrapped wrapped/list wrapped/char justified
+          collapsed-if-one-line
           from-file line-numbers)
 
   (import (scheme base)
@@ -398,4 +399,11 @@
                        (reverse init))
                      (joined (λ=> (list->generator) (span-generator->formatter))
                              last
-                             pad-char))))))))))
+                             pad-char))))))))
+
+    (define (collapsed-if-one-line . ls)
+      (call-with-output-generator (wrapped (each-in-list ls))
+        (λ gen
+          (if (eof-object? ((gfilter (λ=> (span-type) (eqv? 'newline)) gen)))
+            (wrapped (each-in-list ls))
+            (each-in-list ls)))))))
