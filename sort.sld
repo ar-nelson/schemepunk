@@ -8,7 +8,11 @@
           list-sort!         vector-sort!
           list-stable-sort!  vector-stable-sort!
           list-merge
-          list-merge!)
+          list-merge!
+          list-delete-neighbor-dups  vector-delete-neighbor-dups
+          list-delete-neighbor-dups! vector-delete-neighbor-dups!
+          vector-find-median vector-find-median!
+          vector-select! vector-separate!)
 
   (cond-expand
     ((and (not chicken) (or (library (scheme sort)) (library (srfi 132))))
@@ -33,4 +37,6 @@
          (define vector-sort list-sort)
          (define vector-stable-sort list-stable-sort)
          (define vector-sort! list-sort!)
-         (define vector-stable-sort! list-stable-sort!)))))
+         (define vector-stable-sort! list-stable-sort!))
+
+       (include "polyfills/132-extras.scm"))))
