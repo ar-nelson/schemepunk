@@ -50,6 +50,30 @@
     (assume #t)
     (assume #t "a message"))
 
+  (test "is"
+    (assert-true (is 0 zero?))
+    (assert-false (is 1 zero?))
+    (assert-true (is 1 < 2))
+    (assert-false (is 2 < 1))
+    (assert-true (is 4 > 3 > 2 > 1))
+    (assert-false (is 4 > 3 > 3 > 1)))
+
+  (test "is with _"
+    (assert-true ((is _ zero?) 0))
+    (assert-false ((is _ zero?) 1))
+    (assert-true ((is _ < 2) 1))
+    (assert-false ((is 2 < _) 1))
+    (assert-true ((is 4 > 3 > _ > 1) 2))
+    (assert-false ((is _ > 3 > _ > 1) 4 3)))
+
+  (test "isnt"
+    (assert-false (isnt 0 zero?))
+    (assert-true (isnt 1 zero?))
+    (assert-false (isnt 1 < 2))
+    (assert-true (isnt 2 < 1))
+    (assert-false (isnt 4 > 3 > 2 > 1))
+    (assert-true (isnt 4 > 3 > 3 > 1)))
+
   (test "define+"
     (let ()
       (define+ (foo) 1)

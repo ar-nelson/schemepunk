@@ -114,7 +114,7 @@
                 (update-box! row
                   (cut + <> (chain (span-text x)
                                    (string->list)
-                                   (count (cut eqv? <> #\newline)))))
+                                   (count (is _ eqv? #\newline)))))
                 (set-box! col 0))
               (else
                 (update-box! col

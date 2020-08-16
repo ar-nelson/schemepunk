@@ -6,7 +6,7 @@
           one-of none-of dotimes
 
           with-input-from-string with-output-to-string
-          and-let* receive cut cute format assume
+          and-let* receive cut cute format assume is isnt
           nonnegative-integer?
 
           match match?
@@ -230,6 +230,71 @@
                                    (clauses ... ((_ %__1 %__2) result))
                                    identifier-clause
                                    __)))))))
+
+  (cond-expand
+    ((and (not chicken) (library (srfi 156)))
+      (import (srfi 156)))
+    (else
+      (begin
+        (define-syntax %infix/postfix
+          (syntax-rules ()
+            ((_ x pred?)
+              (pred? x))
+            ((_ left pred? right)
+              (pred? left right))
+            ((_ left pred? right . rest)
+              (let ((right* right))
+                (and (%infix/postfix left pred? right*)
+                     (%infix/postfix right* . rest)))))))
+
+      (cond-expand
+        (gerbil
+          (begin
+            (define-syntax %extract-placeholders
+              (syntax-rules ()
+                ((_ final () () body)
+                  (final (%infix/postfix . body)))
+                ((_ final () args body)
+                  (lambda args (final (%infix/postfix . body))))
+                ((_ final (u op . rest) (args ...) (body ...)) (underscore? (syntax u))
+                  (%extract-placeholders final rest (args ... arg) (body ... arg op)))
+                ((_ final (arg op . rest) args (body ...))
+                  (%extract-placeholders final rest args (body ... arg op)))
+                ((_ final (u) (args ...) (body ...)) (underscore? (syntax u))
+                  (%extract-placeholders final () (args ... arg) (body ... arg)))
+                ((_ final (arg) args (body ...))
+                  (%extract-placeholders final () args (body ... arg)))))))
+        (else
+          (begin
+            (define-syntax %extract-placeholders
+              (syntax-rules (_)
+                ((_ final () () body)
+                  (final (%infix/postfix . body)))
+                ((_ final () args body)
+                  (lambda args (final (%infix/postfix . body))))
+                ((_ final (_ op . rest) (args ...) (body ...))
+                  (%extract-placeholders final rest (args ... arg) (body ... arg op)))
+                ((_ final (arg op . rest) args (body ...))
+                  (%extract-placeholders final rest args (body ... arg op)))
+                ((_ final (_) (args ...) (body ...))
+                  (%extract-placeholders final () (args ... arg) (body ... arg)))
+                ((_ final (arg) args (body ...))
+                  (%extract-placeholders final () args (body ... arg))))))))
+
+      (begin
+        (define-syntax %identity-syntax
+          (syntax-rules ()
+            ((_ form) form)))
+
+        (define-syntax is
+          (syntax-rules ()
+            ((_ . args)
+              (%extract-placeholders %identity-syntax args () ()))))
+
+        (define-syntax isnt
+          (syntax-rules ()
+            ((_ . args)
+              (%extract-placeholders not args () ())))))))
 
   (begin
     (define (nonnegative-integer? x)

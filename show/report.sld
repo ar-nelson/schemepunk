@@ -196,7 +196,7 @@
                              (if line-numbers?
                                (string-length (number->string last-line))
                                1))))
-                    (any (cut annotation-overlaps? <> (car anns))
+                    (any (is (car anns) annotation-overlaps? _)
                          (filter (λ=> (car) (= last-line)) chunk))))
             (loop (cdr anns) last-line chunk (snoc skipped (car anns))))
           (else

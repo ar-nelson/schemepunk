@@ -26,19 +26,16 @@
 ;;      (type (list symbol))
 ;;      (doc "list of animals to act on (default all)"))
 ;;    (lions
-;;      (type boolean)
 ;;      (short #\l)
 ;;      (doc "also apply the action to lions")))
 ;;  (commands
 ;;    (feed
 ;;      (short-doc "feed the animals")
-;;      (doc-args animals ...))
+;;      (doc-args <animals> ...))
 ;;    (wash
 ;;      (short-doc "wash the animals")
-;;      (doc-args animals ...)
-;;      (options
-;;        (soap
-;;          (type boolean))))
+;;      (doc-args <animals> ...)
+;;      (options (soap)))
 ;;    (help
 ;;      (short-doc "print help")))
 ;;  (default-help-option #t)
@@ -208,13 +205,13 @@
       (define len (string-length option))
       (define-values (before= after=)
         (do ((i 0 (+ i 1)))
-            ((or (>= i len)
-                 (eqv? #\= (string-ref option i)))
+            ((or (is i >= len)
+                 (is (string-ref option i) eqv? #\=))
               (values (substring option 0 i)
-                      (and (< i len) (substring option (+ i 1) len))))))
+                      (and (is i < len) (substring option (+ i 1) len))))))
       (define option-spec
         (or (assv (string->symbol before=) options-spec)
-            (find (cut has-alias? before= <>) options-spec)))
+            (find (is before= has-alias? _) options-spec)))
       (if option-spec
         (let1-values (value rest)
                      (parse-option-value (cdr option-spec)
@@ -227,7 +224,7 @@
                      (neg-opt (string-drop before= 3))
                      (neg-spec
                        (or (assv (string->symbol neg-opt) options-spec)
-                           (find (cut has-alias? neg-opt <>) options-spec))))
+                           (find (is neg-opt has-alias? _) options-spec))))
             (case (or (conf-get (cdr neg-spec) 'type) 'boolean)
               ((boolean)
                  (let1-values (value rest)
@@ -250,7 +247,7 @@
       (chain (string->list option)
         (pair-fold
           (λ((ch . next) accum)
-            (match (find (cut has-alias? ch <>) options-spec)
+            (match (find (is ch has-alias? _) options-spec)
               ((name . spec)
                 (cond
                   ((null? next)
@@ -273,8 +270,8 @@
         (or after=
             (and (not flag?)
                  (pair? rest)
-                 (or (< (string-length (car rest)) 2)
-                     (not (eqv? #\- (string-ref (car rest) 0))))
+                 (or (is (string-length (car rest)) < 2)
+                     (isnt (string-ref (car rest) 0) eqv? #\-))
                  (let1 x (car rest)
                    (set! rest (cdr rest))
                    x))))

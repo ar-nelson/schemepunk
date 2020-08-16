@@ -661,8 +661,8 @@ this SRFI, there is no polyfill. No additional exports.
 
 A collection of utility macros. Includes [SRFI 2 (`and-let*`)][srfi2], [SRFI 8
 (`receive`)][srfi8], [SRFI 26 (`cut` and `cute`)][srfi26], [SRFI 28
-(`format`)][srfi28], [SRFI 145 (`assume`)][srfi145], and [SRFI 197
-(`chain`)][srfi197].
+(`format`)][srfi28], [SRFI 145 (`assume`)][srfi145], [SRFI 156 (`is`)][srfi156],
+and [SRFI 197 (`chain`)][srfi197].
 
 - `λ` is shorthand for `lambda`. Parentheses may be omitted for a single
   argument name: `(λ x (+ x 1))` = `(lambda (x) (+ x 1))`. Arguments may contain
@@ -818,6 +818,7 @@ additional procedure:
 | [133][srfi133] | `(schemepunk vector)`     | Vector library               |
 | [145][srfi145] | `(schemepunk syntax)`     | Assumptions                  |
 | [146][srfi146] | `(schemepunk mapping)`    | Mappings (w/o `(srfi 146 hash)`) |
+| [156][srfi156] | `(schemepunk syntax)`     | `is` and `isnt`              |
 | [158][srfi158] | `(schemepunk generator)`  | Generators and accumulators  |
 | [162][srfi162] | `(schemepunk comparator)` | Comparators sublibrary       |
 | [166][srfi166] | `(schemepunk show)`       | Monadic formatting           |
@@ -845,6 +846,8 @@ Schemepunk also includes MIT/BSD-licensed code from the following authors:
 - SRFI 128 implementation copyright &copy; 2015 John Cowan
 - SRFI 146 tests and original reference implementation copyright &copy;
   2016-2017 Marc Nieper-Wißkirchen
+- SRFI 156 implementation adapted from reference implementation, copyright
+  &copy; 2017 Panicz Maciej Godek
 - SRFI 158 implementation copyright &copy; 2015 Shiro Kawai, John Cowan, Thomas
   Gilray
 
@@ -870,6 +873,7 @@ Schemepunk also includes MIT/BSD-licensed code from the following authors:
 [srfi133]: https://srfi.schemers.org/srfi-133/
 [srfi145]: https://srfi.schemers.org/srfi-145/
 [srfi146]: https://srfi.schemers.org/srfi-146/
+[srfi156]: https://srfi.schemers.org/srfi-156/
 [srfi158]: https://srfi.schemers.org/srfi-158/
 [srfi162]: https://srfi.schemers.org/srfi-162/
 [srfi166]: https://srfi.schemers.org/srfi-166/
