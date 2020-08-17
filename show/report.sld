@@ -1,8 +1,14 @@
 (define-library (schemepunk show report)
   (export reported report-line wrapped/blocks code-snapshot)
 
-  (import (scheme base)
-          (scheme cxr)
+  (cond-expand
+    (chicken
+      (import (except (scheme base) string-length substring string make-string)
+              (only (utf8) string-length substring string make-string)))
+    (else
+      (import (scheme base))))
+
+  (import (scheme cxr)
           (schemepunk syntax)
           (schemepunk list)
           (schemepunk stream)

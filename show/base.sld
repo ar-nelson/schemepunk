@@ -20,8 +20,8 @@
 
   (cond-expand
     (chicken
-      (import (except (scheme base) string-length substring)
-              (only (utf8) string-length substring)))
+      (import (except (scheme base) string-length substring string make-string)
+              (only (utf8) string-length substring string make-string)))
     (else
       (import (scheme base))))
 
