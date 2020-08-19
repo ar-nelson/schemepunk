@@ -1,16 +1,11 @@
 (define-library (schemepunk show report)
   (export reported report-line wrapped/blocks code-snapshot)
 
-  (cond-expand
-    (chicken
-      (import (except (scheme base) string-length substring string make-string)
-              (only (utf8) string-length substring string make-string)))
-    (else
-      (import (scheme base))))
-
-  (import (scheme cxr)
+  (import (except (scheme base) string-length substring string make-string)
+          (scheme cxr)
           (schemepunk syntax)
           (schemepunk list)
+          (schemepunk string)
           (schemepunk stream)
           (schemepunk sort)
           (schemepunk show)
@@ -43,7 +38,7 @@
       (let loop ((str "") (fmts fmts) (nl? #f))
         (cond
           ((null? fmts)
-            (if (and nl? (not (zero? (string-length str))))
+            (if (and nl? (isnt str string-null?))
               (each nl nl (wrapped str))
               (wrapped str)))
           ((string? (car fmts))
@@ -55,7 +50,7 @@
                   ((and (< (string-width fmt-str) (* width 2/3))
                         (not (contains-newline? fmt-str)))
                     (loop (string-append str fmt-str) (cdr fmts) nl?))
-                  ((zero? (string-length str))
+                  ((string-null? str)
                     (each fmt-str (loop "" (cdr fmts) #t)))
                   (nl?
                     (each nl nl (wrapped str) nl nl fmt-str (loop "" (cdr fmts) #t)))

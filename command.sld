@@ -55,6 +55,7 @@
           (schemepunk syntax)
           (schemepunk list)
           (schemepunk function)
+          (schemepunk string)
           (schemepunk show base)
           (schemepunk show columnar)
           (schemepunk show color))
@@ -116,23 +117,6 @@
                      (show (current-error-port) (app-help spec args))
                      (proc options a c co ca))))
                identity))))))
-
-    (define (string-split str delim)
-      (define in (open-input-string str))
-      (reverse
-        (let lp ((out (open-output-string)) (words '()))
-          (let1 ch (read-char in)
-            (cond
-              ((eof-object? ch)
-                (cons (get-output-string out) words))
-              ((eqv? ch delim)
-                (lp (open-output-string) (cons (get-output-string out) words)))
-              (else
-                (write-char ch out)
-                (lp out words)))))))
-
-    (define (string-drop str n)
-      (substring str n (string-length str)))
 
     (define (spec-with-help spec)
       (define options-spec (conf-get-list spec 'options))
@@ -296,7 +280,7 @@
       (match type
         (('list el)
           (let1-values (vals errs) (chain str
-                                          (string-split <> #\,)
+                                          (string-split <> ",")
                                           (map (cut parse-value el <>))
                                           (unzip2))
             (list vals (find string? errs))))
@@ -347,14 +331,14 @@
             (and (not (eqv? 'boolean type))
                  (format #f "<~a>" type))))
       (string-join
-        separator
         (append
           (map (cut short-option->string <> doc-value)
                (conf-get-list (cdr option-spec) 'short))
           (list (long-option->string (symbol->string (car option-spec))
                                      doc-value))
           (map (λ=> (format #f "~a") (long-option->string <> doc-value))
-               (conf-get-list (cdr option-spec) 'long)))))
+               (conf-get-list (cdr option-spec) 'long)))
+        separator))
 
     (define (app-help spec args)
       (define name (conf-get spec 'name))

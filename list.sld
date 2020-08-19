@@ -53,7 +53,6 @@
           map-with-index
           intercalate
           list-gen
-          string-join
           fold-in-pairs fold-right-in-pairs
           topological-sort)
 
@@ -82,12 +81,6 @@
       (define (list-gen-loop accum)
         (fn (λ(next) (list-gen-loop (cons next accum))) accum))
       (reverse (list-gen-loop '())))
-
-    (define (string-join delim xs)
-      (if (null? xs) ""
-          (fold (λ(b a) (string-append a delim b))
-                (car xs)
-                (cdr xs))))
 
     (define (fold-right-in-pairs fn seed xs)
       (match xs

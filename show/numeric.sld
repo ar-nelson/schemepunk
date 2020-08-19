@@ -7,18 +7,11 @@
           (scheme inexact)
           (scheme write)
           (schemepunk syntax)
-          (schemepunk list))
+          (schemepunk list)
+          (schemepunk string))
 
   (begin
     ;; string utilities
-    (define (string-index s c)
-      (call/cc (λ return
-        (let1 i 0
-          (string-for-each
-            (λ c2 (if (eqv? c c2) (return i) (set! i (+ i 1))))
-            s))
-        #f)))
-
     (define (string-replace-all str ch1 ch2)
       (with-output-to-string (λ()
         (string-for-each
@@ -145,10 +138,10 @@
         ((and (eqv? radix 10) (or (integer? n) (inexact? n)))
           (let* ((s (number->string n))
                  (end (string-length s))
-                 (dec (string-index s #\.))
+                 (dec (string-index s (is _ char=? #\.)))
                  (digits (and dec (- end dec))))
             (cond
-             ((string-index s #\e)
+             ((string-index s (is _ char=? #\e))
                (display-general n radix precision dec-sep))
              ((not digits)
                (string-append s (if (char? dec-sep) (string dec-sep) dec-sep)
@@ -189,11 +182,9 @@
 
     ;; Insert commas according to the current comma-rule.
     (define (insert-commas str comma-rule comma-sep dec-sep)
-      (let* ((dec-pos ; FIXME: handle string decimal separator with length >1
-                      ; (this would require an actual schemepunk string library)
-                      (or (chain
-                            (if (string? dec-sep) (string-ref dec-sep 0) dec-sep)
-                            (string-index str))
+      (let* ((dec-pos (or (if (string? dec-sep)
+                            (string-contains str dec-sep)
+                            (string-index str (is _ char=? dec-sep)))
                           (string-length str)))
              (left (string-copy str 0 dec-pos))
              (right (string-copy str dec-pos))
@@ -269,10 +260,9 @@
           ((finite? n)
             (let* ((s (wrap-sign n sign-rule))
                    (dec-pos (if decimal-align
-                              (or (chain (if (string? dec-sep)
-                                           (string-ref dec-sep 0)
-                                           dec-sep)
-                                         (string-index s))
+                              (or (if (string? dec-sep)
+                                    (string-contains s dec-sep)
+                                    (string-index s (is _ char=? dec-sep)))
                                   (string-length s))
                               0))
                    (diff (- (or decimal-align 0) dec-pos 1)))

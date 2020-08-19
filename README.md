@@ -49,6 +49,7 @@ required on Unix-based OSes.)
     - [`(schemepunk show report)` - Stylish error reports](#schemepunk-show-report)
 - [`(schemepunk sort)` - Sorting](#schemepunk-sort)
 - [`(schemepunk stream)` - Streams](#schemepunk-stream)
+- [`(schemepunk string)` - String utilities](#schemepunk-string)
 - [`(schemepunk syntax)` - Utility macros](#schemepunk-syntax)
 - [`(schemepunk term-colors)` - ANSI terminal colors](#schemepunk-term-colors)
 - [`(schemepunk test)` - Unit test framework](#schemepunk-test)
@@ -367,9 +368,6 @@ In addition to SRFI 1, this module exports several extra procedures:
 - `(map-with-index <fn> <list>)` is like `map`, but it expects `fn` to take two
   arguments. The second argument is the index of the list item.
 
-- `(string-join <delimiter> <strings>)` concatenates `strings` (a list of
-  strings) with `delimiter` in between.
-
 - `(list-gen <fn>)` is a generator-style unfold. `fn` is a lambda that takes
   two arguments, usually named `yield` and `done`. `(yield x)` adds `x` to the
   end of the list being constructed, then recursively calls `fn`. `done` is the
@@ -657,6 +655,22 @@ exports.
 Alias for [SRFI 41 (Streams)][srfi41]. Because all supported Schemes include
 this SRFI, there is no polyfill. No additional exports.
 
+### `(schemepunk string)`
+
+Polyfilled alias for [SRFI 152 (String Library (Reduced))][srfi152]. The
+polyfill is not a full SRFI 152 implementation; it imports either
+[SRFI 13][srfi13] or [SRFI 130][srfi130], then fills in the missing SRFI 152
+procedures. No additional exports.
+
+**Compatibility note:** The `string<?` and `string-ci<?` family of comparison
+procedures in `(schemepunk string)` do not strictly match the specification.
+They are simple reexports of the matching procedures from `(scheme base)` and
+`(scheme char)`, and as such they only accept exactly two arguments. This was
+done because, in some Schemes, it is an error to import two different
+definitions with the same name. If they were defined according to the
+specification, it would be impossible to import `(scheme base)` and `(schemepunk
+string)` in the same module without excluding these imports.
+
 ### `(schemepunk syntax)`
 
 A collection of utility macros. Includes [SRFI 2 (`and-let*`)][srfi2], [SRFI 8
@@ -818,6 +832,7 @@ additional procedure:
 | [133][srfi133] | `(schemepunk vector)`     | Vector library               |
 | [145][srfi145] | `(schemepunk syntax)`     | Assumptions                  |
 | [146][srfi146] | `(schemepunk mapping)`    | Mappings (w/o `(srfi 146 hash)`) |
+| [152][srfi152] | `(schemepunk string)`     | String library (reduced)     |
 | [156][srfi156] | `(schemepunk syntax)`     | `is` and `isnt`              |
 | [158][srfi158] | `(schemepunk generator)`  | Generators and accumulators  |
 | [162][srfi162] | `(schemepunk comparator)` | Comparators sublibrary       |
@@ -846,6 +861,8 @@ Schemepunk also includes MIT/BSD-licensed code from the following authors:
 - SRFI 128 implementation copyright &copy; 2015 John Cowan
 - SRFI 146 tests and original reference implementation copyright &copy;
   2016-2017 Marc Nieper-Wißkirchen
+- SRFI 152 tests and original reference implementation copyright &copy; 2017
+  John Cowan
 - SRFI 156 implementation adapted from reference implementation, copyright
   &copy; 2017 Panicz Maciej Godek
 - SRFI 158 implementation copyright &copy; 2015 Shiro Kawai, John Cowan, Thomas
@@ -861,6 +878,7 @@ Schemepunk also includes MIT/BSD-licensed code from the following authors:
 [srfi1]: https://srfi.schemers.org/srfi-1/
 [srfi2]: https://srfi.schemers.org/srfi-2/
 [srfi8]: https://srfi.schemers.org/srfi-8/
+[srfi13]: https://srfi.schemers.org/srfi-13/
 [srfi26]: https://srfi.schemers.org/srfi-26/
 [srfi28]: https://srfi.schemers.org/srfi-28/
 [srfi41]: https://srfi.schemers.org/srfi-41/
@@ -869,10 +887,12 @@ Schemepunk also includes MIT/BSD-licensed code from the following authors:
 [srfi113]: https://srfi.schemers.org/srfi-113/
 [srfi125]: https://srfi.schemers.org/srfi-125/
 [srfi128]: https://srfi.schemers.org/srfi-128/
+[srfi130]: https://srfi.schemers.org/srfi-130/
 [srfi132]: https://srfi.schemers.org/srfi-132/
 [srfi133]: https://srfi.schemers.org/srfi-133/
 [srfi145]: https://srfi.schemers.org/srfi-145/
 [srfi146]: https://srfi.schemers.org/srfi-146/
+[srfi152]: https://srfi.schemers.org/srfi-152/
 [srfi156]: https://srfi.schemers.org/srfi-156/
 [srfi158]: https://srfi.schemers.org/srfi-158/
 [srfi162]: https://srfi.schemers.org/srfi-162/

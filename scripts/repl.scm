@@ -3,6 +3,7 @@
         (schemepunk syntax)
         (schemepunk list)
         (schemepunk vector)
+        (schemepunk string)
         (schemepunk random)
         (schemepunk comparator)
         (schemepunk path)

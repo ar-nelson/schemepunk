@@ -10,6 +10,7 @@
           (schemepunk syntax)
           (schemepunk list)
           (schemepunk vector)
+          (schemepunk string)
           (schemepunk comparator)
           (schemepunk set)
           (schemepunk mapping)
@@ -65,16 +66,17 @@
         (if (var? t) (var->string t) (format #f "~s" t)))
       (format #f "~a(~a)"
         (caar a)
-        (chain (cdr a) (vector->list) (map term->string) (string-join ", "))))
+        (chain (cdr a) (vector->list) (map term->string) (string-join <> ", "))))
 
     (define (rule->string r)
       (format #f "~a :- ~a"
         (atom->string (rule-head r))
-        (string-join ", "
+        (string-join
           (vector->list
             (vector-append
               (vector-map atom->string (rule-body r))
-              (vector-map (λ=> (atom->string) (string-append "¬")) (rule-negatives r)))))))
+              (vector-map (λ=> (atom->string) (string-append "¬")) (rule-negatives r))))
+          ", ")))
 
     (define db-comparator
       (make-parameter default-value-comparator))
