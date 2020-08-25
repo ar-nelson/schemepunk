@@ -222,12 +222,13 @@
           (make-block
             (list (text-span "#u8(" (datum-color-vector)))
             (chain (bytevector->generator datum)
-                   (gmap (λ=> (number->string <> 16)
-                              (string-upcase)
-                              (format #f "#x~a")
-                              (text-span <> (datum-color-number))))
-                   (generator->list)
-                   (intercalate (whitespace-span)))
+                   (gmap (λ=> (number->string _ 16)
+                              (string-upcase _)
+                              (format #f "#x~a" _)
+                              (text-span _ (datum-color-number)))
+                         _)
+                   (generator->list _)
+                   (intercalate (whitespace-span) _))
             (list (text-span ")" (datum-color-vector)))))
         ((? symbol?)
           (make-block
@@ -303,7 +304,7 @@
                     (%datum->block datum))))
               ((cycles)
                 (parameterize ((datum-shared-context (ctx-cons-seen ctx datum)))
-                  (let ((label (chain-and (assq datum labels) (cdr)))
+                  (let ((label (chain-and (assq datum labels) (cdr _)))
                         (block (%datum->block datum)))
                     (if label
                       (block-with-prefix
@@ -313,7 +314,7 @@
               ((shared)
                 (when (or (pair? datum) (vector? datum) (record? datum))
                   (ctx-add-seen! ctx datum))
-                (let ((label (chain-and (assq datum labels) (cdr)))
+                (let ((label (chain-and (assq datum labels) (cdr _)))
                       (block (%datum->block datum)))
                   (if label
                     (block-with-prefix

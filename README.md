@@ -682,19 +682,17 @@ and [SRFI 197 (`chain`)][srfi197].
   argument name: `(λ x (+ x 1))` = `(lambda (x) (+ x 1))`. Arguments may contain
   destructuring assigments (see `match`).
 
-- `chain` is the [Clojure threading macro][clojure-threading] `->>`, with some
-  additional features. This macro is fully defined in [SRFI 197][srfi197], but
-  here is a quick description:
+- `chain` is similar to [Clojure threading macros][clojure-threading], but with
+  `_` as an explicit argument marker. This macro is fully defined in
+  [SRFI 197][srfi197].
 
-  - `(chain x (foo y) (bar z))` = `(bar z (foo y x))`.
-  - Argument location can be moved with `<>`: `(chain x (foo <> y))` =
-    `(foo x y)`.
-  - Unlike Clojure, all calls in the pipeline must be lists. `(chain x foo)` is
-    illegal, and must be written `(chain x (foo))`.
+    ```scheme
+    (chain x (foo y _) (bar _ z)) ; => (bar (foo y x) z)
+    ```
 
 - `chain-lambda` defines a lambda using a `chain` pipeline. `(chain-lambda (foo
-  y) (bar z))` = `(lambda (x) (chain x (foo y) (bar z)))`. `λ=>` is shorthand
-  for `chain-lambda`.
+  y _) (bar _ z))` = `(lambda (x) (chain x (foo y _) (bar _ z)))`. `λ=>` is
+  shorthand for `chain-lambda`.
 
 - `(let1 <name> <value> <expressions>…)` is shorthand for `let` with a single
   variable.

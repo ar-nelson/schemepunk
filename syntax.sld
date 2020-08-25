@@ -1,6 +1,6 @@
 (define-library (schemepunk syntax)
   (export λ λ=>
-          chain chain-and chain-when chain-lambda nest reverse-nest
+          chain chain-and chain-when chain-lambda nest nest-reverse
           let1 let1-values
           inline-defines syntax-symbol-case
           one-of none-of dotimes
@@ -20,6 +20,41 @@
           (scheme case-lambda)
           (scheme write)
           (schemepunk function))
+
+  (cond-expand
+    (gerbil
+      (import (only (gerbil core)
+                ; Gerbil has a built-in concept of "phi levels".
+                ; Symbols can be imported at the expression level (phi=0)
+                ; or the syntax level (phi=1), and (scheme base) is phi=0,
+                ; so anything used in syntax must import from (gerbil core).
+                lambda let cond else and define defrules
+                eof-object? eof-object reverse null? car cdr cons error
+
+                syntax-case syntax with-syntax genident defrules
+                underscore? ellipsis? identifier? free-identifier=?))
+      (begin-syntax
+        ; Gerbil doesn't define quasisyntax!
+        ; This is a sloppy polyfill, but it works well enough for SRFI 197.
+        (defrules %qs (unsyntax)
+          ((_ (out ...) ())
+            (syntax (out ...)))
+          ((_ (out ...) ((unsyntax x) . in))
+            (with-syntax ((unsyntax-name x))
+              (%qs (out ... unsyntax-name) in)))
+          ((_ (out ...) ((x . xs) . in))
+            (with-syntax ((sublist-name (%qs () (x . xs))))
+              (%qs (out ... sublist-name) in)))
+          ((_ (out ...) (x . in))
+            (%qs (out ... x) in)))
+
+        (defrules quasisyntax ()
+          ((_ (x . xs)) (%qs () (x . xs)))
+          ((_ x) (syntax x)))
+
+        (define (syntax-violation name msg . rest)
+          (error msg (cons name rest)))))
+    (else))
 
   (cond-expand
     ((or chicken (library (srfi 2)))
@@ -143,11 +178,6 @@
       (import (srfi 145)))
     ((library (std srfi 145))
       (import (std srfi 145)))
-    ((library (rnrs))
-      (import (only (rnrs) assert))
-      (begin
-        (define-syntax assume
-          ((_ ok? . _) (assert ok?)))))
     (else
       (begin
         (define-syntax assume
@@ -159,6 +189,8 @@
   (cond-expand
     ((and (not chicken) (library (srfi 197)))
       (import (srfi 197)))
+    (gerbil
+      (include "polyfills/srfi-197-syntax-case.scm"))
     (else
       (include "polyfills/srfi-197-impl.scm")))
 
@@ -175,7 +207,6 @@
   ; [2]: http://www.r6rs.org/r6rs-editors/2006-August/001680.html
   (cond-expand
     (gerbil
-      (import (only (gerbil core) syntax underscore? identifier?))
       (begin
         (define-syntax syntax-symbol-case
           (syntax-rules ()
@@ -299,16 +330,6 @@
   (begin
     (define (nonnegative-integer? x)
       (and (number? x) (integer? x) (>= x 0)))
-
-    (define-syntax nest
-      (syntax-rules ()
-        ((_ x) x)
-        ((_ (xs ...) y . zs) (xs ... (nest y . zs)))))
-
-    (define-syntax reverse-nest
-      (syntax-rules ()
-        ((_ x) x)
-        ((_ x (ys ...) . zs) (reverse-nest (ys ... x) . zs))))
 
     (define-syntax λ=>
       (syntax-rules () ((_ . xs) (chain-lambda . xs))))
@@ -450,9 +471,9 @@
         ((_ _ _ (? _) body) body)
         ((_ subject over (? _ name) body) (match-body-let subject over name body))
         ((_ subject over (and pat ...) body)
-          (nest (match-body subject over pat) ... body))
+          (nest %__placeholder (match-body subject over pat %__placeholder) ... body))
         ((_ subject over (or pat ...) body)
-          (nest (match-body subject over pat) ... body))
+          (nest %__placeholder (match-body subject over pat %__placeholder) ... body))
         ((_ _ _ (not _) body) body)
         ((_ subject over (pat ___) body)
           (match-body ellipsis ((ellipsis subject) . over) pat body))

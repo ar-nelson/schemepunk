@@ -68,7 +68,7 @@
       (assume (positive? max))
       (assume (procedure? string-width))
       (chain (block->span-generator block)
-             (unindented-length <> max string-width)))
+             (unindented-length _ max string-width)))
 
     (define (block-with-prefix block prefix)
       (assume (block? block))
@@ -143,21 +143,21 @@
                                         string-width))
                    (elements (remove whitespace? (block-body x)))
                    (elem-lengths
-                     (map (λ=> (generator)
-                               (unindented-length <> width string-width))
+                     (map (λ=> (generator _)
+                               (unindented-length _ width string-width))
                           elements))
                    (tail-length (chain (block-tail x)
-                                       (list->generator)
-                                       (unindented-length <> width string-width)
-                                       (+ extra-tail-length)))
+                                       (list->generator _)
+                                       (unindented-length _ width string-width)
+                                       (+ _ extra-tail-length)))
                    (break-anywhere?
                      (and (pair? elements)
-                          (> (+ current-indent (block-length x)) width)))
+                          (is (+ current-indent (block-length x)) > width)))
                    (break-after-head?
                      (and break-anywhere?
                           (pair? (block-head x))
-                          (> head-length (* indent 2))
-                          (any (λ=> (+ current-indent head-length) (> <> width))
+                          (is head-length > (* indent 2))
+                          (any (λ=> (+ _ current-indent head-length) (> _ width))
                                (cons (+ tail-length (last elem-lengths))
                                      elem-lengths)))))
                   (set! blocks
@@ -178,9 +178,9 @@
                             ,@rest)))
                       (break-anywhere?
                         (let1 body-indent (chain (block-head x)
-                                                 (list->generator)
-                                                 (unindented-length <> width string-width)
-                                                 (+ current-indent))
+                                                 (list->generator _)
+                                                 (unindented-length _ width string-width)
+                                                 (+ _ current-indent))
                           `((extra-tail-length ,tail-length)
                             ,@(block-head x)
                             (indent ,body-indent)

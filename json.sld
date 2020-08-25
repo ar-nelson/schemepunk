@@ -23,18 +23,17 @@
     ;; stack is a list of booleans, where #t = array, #f = object
     ;; state is one of (comma colon key value)
     (define-record-type Json-Context
-      (%make-json-context% stack state pos)
+      (%make-json-context stack state pos)
       json-context?
       (stack json-context-stack set-json-context-stack!)
       (state json-context-state set-json-context-state!)
       (pos json-context-pos set-json-context-pos!))
 
     (define (make-json-context)
-      (%make-json-context% '() 'value -1))
+      (%make-json-context '() 'value -1))
 
-    (define (read-json-event ctx . args)
-      (%read-json-event% ctx
-        (match args ((port) port) (() (current-input-port)))))
+    (define+ (read-json-event ctx :optional (port (current-input-port)))
+      (%read-json-event ctx port))
 
     (define (next-char! ctx port)
       (set-json-context-pos! ctx
@@ -45,44 +44,40 @@
       (set-json-context-stack! ctx (cdr (json-context-stack ctx)))
       (json-context-stack ctx))
 
-    (define (%read-json-event% ctx port)
+    (define (%read-json-event ctx port)
       (define c (next-char! ctx port))
       (cond
         ((eof-object? c)
            (if (pair? (json-context-stack ctx))
                (values 'error "unexpected EOF")
                (values 'done #f)))
-        ((char-whitespace? c) (%read-json-event% ctx port))
+        ((char-whitespace? c) (%read-json-event ctx port))
         (else (case (json-context-state ctx)
           ((comma)
              (if (car (json-context-stack ctx))
                (case c
                  ((#\,) (set-json-context-state! ctx 'value)
-                        (%read-json-event% ctx port))
+                        (%read-json-event ctx port))
                  ((#\]) (when (null? (pop-stack! ctx))
                           (set-json-context-state! ctx 'value))
                         (values 'array-end #f))
                  (else
-                   (values 'error (string-append "unexpected "
-                                                 (string c)
-                                                 "; expected , or ]"))))
+                   (values 'error
+                           (format #f "unexpected ~a; expected , or ]" c))))
                (case c
                  ((#\,) (set-json-context-state! ctx 'key)
-                        (%read-json-event% ctx port))
+                        (%read-json-event ctx port))
                  ((#\}) (when (null? (pop-stack! ctx))
                           (set-json-context-state! ctx 'value))
                         (values 'object-end #f))
                  (else
-                   (values 'error (string-append "unexpected "
-                                                 (string c)
-                                                 "; expected , or }"))))))
+                   (values 'error
+                           (format #f "unexpected ~a; expected , or }" c))))))
           ((colon) (case c
              ((#\:) (set-json-context-state! ctx 'value)
-                    (%read-json-event% ctx port))
+                    (%read-json-event ctx port))
              (else
-               (values 'error (string-append "unexpected "
-                                             (string c)
-                                             "; expected :")))))
+               (values 'error (format #f "unexpected ~a; expected :" c)))))
           ((key) (case c
              ((#\") (set-json-context-state! ctx 'colon)
                     (let-values (((event value) (read-json-string ctx port)))
@@ -91,9 +86,7 @@
                       (if (null? (pop-stack! ctx)) 'value 'comma))
                     (values 'object-end #f))
              (else
-               (values 'error (string-append "unexpected "
-                                             (string c)
-                                             "; expected key")))))
+               (values 'error (format #f "unexpected ~a; expected key" c)))))
           (else
             (case c
               ((#\[) (set-json-context-stack! ctx
@@ -146,9 +139,7 @@
                    (set-json-context-state! ctx 'comma))
                  (read-json-number ctx port c))
               ((#\} #\, #\:)
-                 (values 'error (string-append "unexpected "
-                                               (string c)
-                                               "; expected value")))
+                 (values 'error (format #f "unexpected ~a; expected value" c)))
               (else (values 'error "illegal character"))))))))
 
     (define (read-json-string ctx port)
@@ -232,21 +223,20 @@
                   (values 'number (get-output-string str))
                   (values 'error "dot or minus with no digits")))))))
 
-    (define (read-json . args)
-      (define port (match args ((x) x) (() (current-input-port))))
+    (define+ (read-json :optional (port (current-input-port)))
       (define ctx (make-json-context))
       (let loop ((current #f) (stack '()))
-        (let1-values (event value) (%read-json-event% ctx port)
+        (let1-values (event value) (%read-json-event ctx port)
           (case event
             ((array-start object-start)
               (loop '() (cons current stack)))
             ((key) (loop value (cons current stack)))
             ((done) (error "EOF while parsing JSON"))
             ((error)
-              (error (string-append "JSON parser (char "
-                                    (number->string (json-context-pos ctx))
-                                    "): "
-                                    value)))
+              (error (format #f
+                             "JSON parser (char ~s): ~a"
+                             (json-context-pos ctx)
+                             value)))
             (else
               (let ((result (case event
                               ((array-end) (reverse-list->vector current))
@@ -274,7 +264,7 @@
     (define (alist? xs)
       (and (list? xs) (every (λ x (and (pair? x) (string? (car x)))) xs)))
 
-    (define (%write-json% json port)
+    (define (%write-json json port)
       (match json
         ('null (write-string "null" port))
         ('true (write-string "true" port))
@@ -305,7 +295,7 @@
           (let1 first #t
             (vector-for-each
               (λ x (if first (set! first #f) (write-char #\, port))
-                   (%write-json% x port))
+                   (%write-json x port))
               json))
           (write-char #\] port))
         ((? alist?)
@@ -316,40 +306,35 @@
                 (write-char #\" port)
                 (write-string (escape-json-string k) port)
                 (write-string "\":" port)
-                (%write-json% v port)
+                (%write-json v port)
                 (unless (null? (cdr xs))
                   (write-char #\, port)
                   (loop (cdr xs))))))
           (write-char #\} port))
         ((? list?)
           ; Handle non-object lists, just in case we get non-JSON data.
-          (%write-json% (list->vector json) port))
+          (%write-json (list->vector json) port))
         (else
           (write-string "\"!! NOT JSON: " port)
-          (let1 str (open-output-string)
-            (write json str)
-            (chain str (get-output-string) (escape-json-string) (write-string <> port)))
+          (chain (format #f "~s" json) (escape-json-string _) (write-string _ port))
           (write-char #\" port))))
 
-    (define (write-json json . args)
-      (%write-json% json (match args ((port) port) (() (current-input-port)))))
+    (define+ (write-json json :optional (port (current-output-port)))
+      (%write-json json port))
 
     (define (json->string json)
-      (define str (open-output-string))
-      (%write-json% json str)
-      (get-output-string str))
+      (with-output-to-string (λ() (write-json json))))
 
     (define (escape-json-string str)
-      (define out (open-output-string))
-      (string-for-each
-        (λ c (case c
-          ((#\" #\\) (write-string (string #\\ c) out))
-          ((#\newline) (write-string "\\n" out))
-          ((#\return) (write-string "\\r" out))
-          ((#\tab) (write-string "\\t" out))
-          ((#\backspace) (write-string "\\b" out))
-          ((#\x0b) (write-string "\\v" out))
-          ((#\x0c) (write-string "\\f" out))
-          (else (write-char c out))))
-        str)
-      (get-output-string out))))
+      (with-output-to-string (λ()
+        (string-for-each
+          (λ c (case c
+            ((#\" #\\) (write-string (string #\\ c)))
+            ((#\newline) (write-string "\\n"))
+            ((#\return) (write-string "\\r"))
+            ((#\tab) (write-string "\\t"))
+            ((#\backspace) (write-string "\\b"))
+            ((#\x0b) (write-string "\\v"))
+            ((#\x0c) (write-string "\\f"))
+            (else (write-char c))))
+          str))))))

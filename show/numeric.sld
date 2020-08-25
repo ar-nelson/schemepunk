@@ -24,7 +24,7 @@
                (res '()))
         (let* ((offset (if (pair? rule) (car rule) rule))
                (i2 (if offset (- i offset) 0)))
-          (if (<= i2 0)
+          (if (is i2 <= 0)
             (apply string-append (cons (string-copy str 0 i) res))
             (lp i2
                 (if (and (pair? rule) (not (null? (cdr rule))))
@@ -42,7 +42,7 @@
         ;; (exact (ceiling (/ (log (+ a 1)) (log base))))
         (do ((ndigits 1 (+ ndigits 1))
              (p base (* p base)))
-            ((> p a) ndigits))))
+            ((is p > a) ndigits))))
 
     ;; General formatting utilities.
     (define (get-scale q radix)
@@ -50,7 +50,7 @@
 
     (define (char-digit d)
       (cond ((char? d) d)
-            ((< d 10) (integer->char (+ d (char->integer #\0))))
+            ((is d < 10) (integer->char (+ d (char->integer #\0))))
             (else (integer->char (+ (- d 10) (char->integer #\a))))))
 
     (define (round-up ls radix)
@@ -67,11 +67,11 @@
 
     (define (maybe-round n d ls radix)
       (let* ((q (quotient n d))
-             (digit (* 2 (if (>= q radix)
+             (digit (* 2 (if (is q >= radix)
                            (quotient q (get-scale q radix))
                            q))))
-        (if (or (> digit radix)
-                (and (= digit radix)
+        (if (or (is digit > radix)
+                (and (is digit = radix)
                      (let ((prev (find integer? ls)))
                        (and prev (odd? prev)))))
           (round-up ls radix)
@@ -107,13 +107,13 @@
           (cond
             ;; Use a fixed precision if specified, otherwise generate
             ;; 15 decimals.
-            ((if precision (< i precision) (< i 16))
+            ((is i < (or precision 16))
               (let ((res (if (zero? i)
                            (append dec-ls (if (null? res) (cons 0 res) res))
                            res))
                     (q (quotient n d)))
                 (cond
-                  ((< i -1)
+                  ((is i < -1)
                     (let* ((scale (expt radix (- -1 i)))
                            (digit (quotient q scale))
                            (n2 (- n (* d digit scale))))
@@ -124,10 +124,10 @@
                         (cons q res))))))
             (else
               (chain (maybe-round n d res radix)
-                     (maybe-trim-zeros i <> (inexact? n-orig) precision dec-ls)
-                     (reverse)
-                     (map char-digit)
-                     (list->string)))))))
+                     (maybe-trim-zeros i _ (inexact? n-orig) precision dec-ls)
+                     (reverse _)
+                     (map char-digit _)
+                     (list->string _)))))))
 
     ;; Generate a fixed precision decimal result by post-editing the
     ;; result of string->number.
@@ -146,26 +146,26 @@
              ((not digits)
                (string-append s (if (char? dec-sep) (string dec-sep) dec-sep)
                                 (make-string precision #\0)))
-             ((<= digits precision)
+             ((is digits <= precision)
                (string-append s (make-string (- precision digits -1) #\0)))
              (else
                (let* ((last (- end (- digits precision 1)))
                       (res (string-copy s 0 last)))
                  (if (and
-                       (< last end)
+                       (is last < end)
                        (let1 next (digit-value (string-ref s last))
-                         (or (> next 5)
-                             (and (= next 5)
-                                  (> last 0)
+                         (or (is next > 5)
+                             (and (is next = 5)
+                                  (is last > 0)
                                   (memv (digit-value (string-ref s (- last 1)))
                                         '(1 3 5 7 9))))))
                    (chain (string->list res)
-                          (map digit-value)
-                          (reverse)
-                          (round-up <> radix)
-                          (map char-digit)
-                          (reverse)
-                          (list->string))
+                          (map digit-value _)
+                          (reverse _)
+                          (round-up _ radix)
+                          (map char-digit _)
+                          (reverse _)
+                          (list->string _))
                    res))))))
         (else
           (display-general n radix precision dec-sep))))

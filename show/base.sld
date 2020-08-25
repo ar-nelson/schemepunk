@@ -113,8 +113,8 @@
               ((newline)
                 (update-box! row
                   (cut + <> (chain (span-text x)
-                                   (string->list)
-                                   (count (is _ eqv? #\newline)))))
+                                   (string->list _)
+                                   (count (is _ eqv? #\newline) _))))
                 (set-box! col 0))
               (else
                 (update-box! col
@@ -130,9 +130,9 @@
     (define (output-default str)
       (λ vars
         (chain (cute read-char (open-input-string str))
-               (char-generator->span-generator <> (get-var vars word-separator?))
-               (span-generator->formatter)
-               (<> vars))))
+               (char-generator->span-generator _ (get-var vars word-separator?))
+               (span-generator->formatter _)
+               (_ vars))))
 
     (define output (make-state-variable "output" output-default))
 
@@ -179,7 +179,7 @@
     (define (show output-dest . fmts)
       (define vars
         (chain (copy-vars default-state-variables)
-               (mapping-set! <> width (box (get-terminal-width)))))
+               (mapping-set! _ width (box (get-terminal-width)))))
       (define fmt (each-in-list fmts))
       (case output-dest
         ((#t) (%show vars (current-output-port) fmt))
@@ -211,8 +211,8 @@
 
     (define+ (joined mapper xs :optional (sep ""))
       (chain (map mapper xs)
-             (intercalate sep)
-             (each-in-list)))
+             (intercalate sep _)
+             (each-in-list _)))
 
     (define+ (joined/prefix mapper xs :optional (sep ""))
       (each-in-list (append-map (λ x (list sep (mapper x))) xs)))
@@ -223,24 +223,24 @@
     (define+ (joined/last mapper last-mapper xs :optional (sep ""))
       (if (null? xs) nothing
         (chain (last-mapper (last xs))
-               (snoc (map mapper (drop-right xs 1)))
-               (intercalate sep)
-               (each-in-list))))
+               (snoc (map mapper (drop-right xs 1)) _)
+               (intercalate sep _)
+               (each-in-list _))))
 
     (define+ (joined/dot mapper dot-mapper xs :optional (sep ""))
       (let loop ((out '()) (xs xs))
         (cond
           ((null? xs)
             (chain (reverse out)
-                   (intercalate sep)
-                   (each-in-list)))
+                   (intercalate sep _)
+                   (each-in-list _)))
           ((pair? xs)
             (loop (cons (mapper (car xs)) out) (cdr xs)))
           (else
             (chain (cons (dot-mapper xs) out)
-                   (reverse)
-                   (intercalate sep)
-                   (each-in-list))))))
+                   (reverse _)
+                   (intercalate sep _)
+                   (each-in-list _))))))
 
     (define+ (joined/range mapper start :optional (end #f) (sep ""))
       (define last (and (number? end) (- end 1)))
@@ -249,8 +249,9 @@
                (gmap (λ i (chain (if (= i last)
                                    (each (mapper i))
                                    (each (mapper i) sep))
-                                 (<> vars))))
-               (generator-fold (flip gappend) (generator)))))
+                                 (_ vars)))
+                     _)
+               (generator-fold (flip gappend) (generator) _))))
 
     (define (displayed obj)
       (cond
@@ -388,8 +389,8 @@
                  (or comma-sep/arg (get-var vars comma-sep))
                  (or decimal-sep/arg (get-var vars decimal-sep))
                  (get-var vars decimal-align))
-               (displayed)
-               (<> vars))))
+               (displayed _)
+               (_ vars))))
 
     (define+ (numeric/comma num
                             :optional
@@ -415,14 +416,14 @@
                  (get-var vars comma-sep)
                  (get-var vars decimal-sep)
                  (get-var vars decimal-align))
-               (displayed)
-               (<> vars))))
+               (displayed _)
+               (_ vars))))
 
     (define (numeric/fitted width num . args)
       (assume (number? num))
       (assume (nonnegative-integer? width))
       (call-with-output (apply numeric num args) (λ str
-        (if (> (string-length str) width)
+        (if (is (string-length str) > width)
           (fn (precision decimal-sep comma-sep)
             (let ((prec (if (and (pair? args) (pair? (cdr args)))
                           (cadr args)
@@ -452,31 +453,31 @@
       (assume (nonnegative-integer? width))
       (λ vars
         (let1-values (gen actual-width) (fork-width vars width fmts)
-          (if (< actual-width width)
+          (if (is actual-width < width)
             (chain (- width actual-width)
-                   (make-string <> (get-var vars pad-char))
-                   (whitespace-span)
-                   (generator)
-                   (gappend <> gen))
+                   (make-string _ (get-var vars pad-char))
+                   (whitespace-span _)
+                   (generator _)
+                   (gappend _ gen))
             gen))))
 
     (define (padded/right width . fmts)
       (assume (nonnegative-integer? width))
       (λ vars
         (let1-values (gen actual-width) (fork-width vars width fmts)
-          (if (< actual-width width)
+          (if (is actual-width < width)
             (chain (- width actual-width)
-                   (make-string <> (get-var vars pad-char))
-                   (whitespace-span)
-                   (generator)
-                   (gappend gen <>))
+                   (make-string _ (get-var vars pad-char))
+                   (whitespace-span _)
+                   (generator _)
+                   (gappend gen _))
             gen))))
 
     (define (padded/both width . fmts)
       (assume (nonnegative-integer? width))
       (λ vars
         (let1-values (gen actual-width) (fork-width vars width fmts)
-          (if (< actual-width width)
+          (if (is actual-width < width)
             (let* ((pad (- width actual-width))
                    (half-pad (quotient pad 2))
                    (ch (get-var vars pad-char)))
@@ -494,7 +495,7 @@
                  (substring/width (get-var vars substring/width))
                  (actual-width (string-width str)))
             ((displayed
-               (if (> actual-width width)
+               (if (is actual-width > width)
                  (let* ((ellipsis (get-var vars ellipsis))
                         (ellipsis-width (string-width ellipsis)))
                    (string-append
@@ -513,7 +514,7 @@
                  (substring/width (get-var vars substring/width))
                  (actual-width (string-width str)))
             ((displayed
-               (if (> actual-width width)
+               (if (is actual-width > width)
                  (let* ((ellipsis (get-var vars ellipsis))
                         (ellipsis-width (string-width ellipsis)))
                    (string-append
@@ -530,7 +531,7 @@
                  (substring/width (get-var vars substring/width))
                  (actual-width (string-width str)))
             ((displayed
-               (if (> actual-width width)
+               (if (is actual-width > width)
                  (let* ((ellipsis (get-var vars ellipsis))
                         (ellipsis-width (string-width ellipsis))
                         (pad (- actual-width width (* -2 ellipsis-width)))
@@ -553,19 +554,19 @@
                         (call/cc (λ return
                           (generator-fold
                             (λ(span (len spans))
-                              (if (>= len width)
+                              (if (is len >= width)
                                 (return (list len spans))
                                 (list (+ len (string-width (span-text span)))
                                       (cons span spans))))
                             '(0 ())
                             ((each-in-list fmts) vars))))))
-          (chain (if (> len width)
+          (chain (if (is len > width)
                    (let loop ((len len) (spans spans))
                      (let1 span-len (string-width (span-text (car spans)))
                        (cond
-                         ((> (- len span-len) width)
+                         ((is (- len span-len) > width)
                            (loop (- len span-len) (cdr spans)))
-                         ((= (- len span-len) width)
+                         ((is (- len span-len) = width)
                            (cdr spans))
                          (else
                            (cons
@@ -574,8 +575,8 @@
                                (car spans))
                              (cdr spans))))))
                    spans)
-                 (reverse)
-                 (list->generator)))))
+                 (reverse _)
+                 (list->generator _)))))
 
     (define (fitted width . fmts)
       (assume (nonnegative-integer? width))

@@ -45,20 +45,20 @@
 
   (test "insert and get multiple values for same key (immutable)"
     (define mmap (chain (make-mmap)
-      (multimap-adjoin! <> "foo" "bar")
-      (multimap-adjoin! <> "foo" "baz")
-      (multimap-adjoin! <> "foo" "qux")))
+      (multimap-adjoin! _ "foo" "bar")
+      (multimap-adjoin! _ "foo" "baz")
+      (multimap-adjoin! _ "foo" "qux")))
     (assert-equal (set-size (multimap-ref mmap "foo")) 3))
 
   (test "insert and get multiple values with adjoin-set (immutable)"
     (define mmap (chain (make-mmap)
-      (multimap-adjoin-set <> "foo" (set cmp "bar" "baz" "qux"))))
+      (multimap-adjoin-set _ "foo" (set cmp "bar" "baz" "qux"))))
     (assert-equal (set-size (multimap-ref mmap "foo")) 3))
 
   (test "insert and get multiple keys (immutable)"
     (define mmap (chain (make-mmap)
-      (multimap-adjoin! <> "foo" "bar")
-      (multimap-adjoin! <> "baz" "qux")))
+      (multimap-adjoin! _ "foo" "bar")
+      (multimap-adjoin! _ "baz" "qux")))
     (assert-equal (set->list (multimap-ref mmap "foo")) '("bar"))
     (assert-equal (set->list (multimap-ref mmap "baz")) '("qux")))
 
@@ -80,18 +80,18 @@
 
   (test "delete individual value (immutable)"
     (define mmap (chain (make-mmap)
-      (multimap-adjoin <> "foo" "bar")
-      (multimap-adjoin <> "foo" "baz")
-      (multimap-delete-value <> "foo" "bar")
-      (multimap-delete-value <> "foo" "bar")
-      (multimap-delete-value <> "foo" "qux")))
+      (multimap-adjoin _ "foo" "bar")
+      (multimap-adjoin _ "foo" "baz")
+      (multimap-delete-value _ "foo" "bar")
+      (multimap-delete-value _ "foo" "bar")
+      (multimap-delete-value _ "foo" "qux")))
     (assert-equal (set->list (multimap-ref mmap "foo")) '("baz")))
 
   (test "delete entire key (immutable)"
     (define mmap (chain (make-mmap)
-      (multimap-adjoin <> "foo" "bar")
-      (multimap-adjoin <> "foo" "baz")
-      (multimap-delete-key <> "foo")))
+      (multimap-adjoin _ "foo" "bar")
+      (multimap-adjoin _ "foo" "baz")
+      (multimap-delete-key _ "foo")))
     (assert-true (set-empty? (multimap-ref mmap "foo"))))
 
   (test "empty keys return an empty set"

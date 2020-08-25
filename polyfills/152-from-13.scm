@@ -35,13 +35,13 @@
         (if (and limit (is limit < (- end start)))
           (let* ((limit* (case grammar ((suffix) (+ limit 1)) (else limit)))
                  (chars (chain (substring str start (+ start limit*))
-                               (string->list <>)
-                               (map string <>))))
+                               (string->list _)
+                               (map string _))))
             (snoc (case grammar ((prefix) (cons "" chars)) (else chars))
                   (substring str (+ start limit*) end)))
           (chain (substring str start end)
-                 (string->list <>)
-                 (map string <>))))
+                 (string->list _)
+                 (map string _))))
       (else
         (unfold not
                 (λ((last next _))

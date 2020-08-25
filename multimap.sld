@@ -16,6 +16,7 @@
 
   (import (scheme base)
           (schemepunk syntax)
+          (schemepunk function)
           (schemepunk list)
           (schemepunk comparator)
           (schemepunk set)
@@ -76,8 +77,8 @@
       (assume (set? vals))
       (assume (eq? (multimap-value-comparator mmap) (set-element-comparator vals)))
       (chain (multimap->mapping mmap)
-             (mapping-update <> key (λ x x) (λ() (set-copy vals)) (cut set-union <> vals))
-             (make-multimap <> (multimap-value-comparator mmap))))
+             (mapping-update _ key identity (λ() (set-copy vals)) (cut set-union <> vals))
+             (make-multimap _ (multimap-value-comparator mmap))))
 
     (define (multimap-adjoin-set! mmap key vals)
       (assume (multimap? mmap))
@@ -85,7 +86,7 @@
       (assume (eq? (multimap-value-comparator mmap) (set-element-comparator vals)))
       (set-multimap-mapping! mmap
         (chain (multimap->mapping mmap)
-               (mapping-update! <> key (λ x x) (λ() (set-copy vals)) (cut set-union! <> vals))))
+               (mapping-update! _ key identity (λ() (set-copy vals)) (cut set-union! <> vals))))
       mmap)
 
     (define (multimap-delete-key mmap key)
@@ -105,9 +106,9 @@
       (let1 m (multimap->mapping mmap)
         (mapping-ref m key
           (λ() mmap)
-          (λ=> (set-delete <> value)
-               (mapping-set m key)
-               (make-multimap <> (multimap-value-comparator mmap))))))
+          (λ=> (set-delete _ value)
+               (mapping-set m key _)
+               (make-multimap _ (multimap-value-comparator mmap))))))
 
     (define (multimap-delete-value! mmap key value)
       (assume (multimap? mmap))
@@ -115,8 +116,8 @@
         (mapping-ref m key
           (λ() mmap)
           (λ vs (chain (set-delete! vs value)
-                       (mapping-set! m key)
-                       (set-multimap-mapping! mmap))
+                       (mapping-set! m key _)
+                       (set-multimap-mapping! mmap _))
                 mmap))))
 
     (define (multimap-union lhs rhs)
@@ -180,8 +181,8 @@
     (define (multimap-value-count mmap)
       (assume (multimap? mmap))
       (chain (multimap-value-sets mmap)
-             (map set-size)
-             (fold + 0)))
+             (map set-size _)
+             (fold + 0 _)))
 
     (define (multimap-empty? mmap)
       (assume (multimap? mmap))
@@ -208,8 +209,8 @@
                     (datum->block k)
                     (whitespace-span))
                   (chain (set->list v)
-                         (map datum->block)
-                         (intercalate (whitespace-span)))
+                         (map datum->block _)
+                         (intercalate (whitespace-span) _))
                   (list
                     (text-span ")" color))))
               (mapping->alist (multimap->mapping mmap))))

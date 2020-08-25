@@ -135,18 +135,18 @@
       (import (utf8-case-map))
       (begin
         (define (upcased . fmts)
-          (λ=> ((each-in-list fmts))
-               (gmap (cut span-map-text utf8-string-upcase <>))))
+          (λ=> ((each-in-list fmts) _)
+               (gmap (cut span-map-text utf8-string-upcase <>) _)))
 
         (define (downcased . fmts)
-          (λ=> ((each-in-list fmts))
-               (gmap (cut span-map-text utf8-string-downcase <>))))))
+          (λ=> ((each-in-list fmts) _)
+               (gmap (cut span-map-text utf8-string-downcase <>) _)))))
     (else
       (begin
         (define (upcased . fmts)
-          (λ=> ((each-in-list fmts))
-               (gmap (cut span-map-text string-upcase <>))))
+          (λ=> ((each-in-list fmts) _)
+               (gmap (cut span-map-text string-upcase <>) _)))
 
         (define (downcased . fmts)
-          (λ=> ((each-in-list fmts))
-               (gmap (cut span-map-text string-downcase <>))))))))
+          (λ=> ((each-in-list fmts) _)
+               (gmap (cut span-map-text string-downcase <>) _)))))))

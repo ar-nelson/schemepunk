@@ -10,8 +10,8 @@
           make-btree-comparator btree-comparator)
 
   (import (scheme base)
-          (scheme case-lambda)
           (schemepunk syntax)
+          (schemepunk function)
           (schemepunk list)
           (schemepunk comparator))
 
@@ -57,7 +57,7 @@
 
     (define (find>= vec key <? size)
       (let loop ((i 0))
-        (if (or (= i size) (not (<? (car (vector-ref vec i)) key)))
+        (if (or (= i size) (isnt (car (vector-ref vec i)) <? key))
           i
           (loop (+ i 1)))))
 
@@ -83,13 +83,13 @@
 
     (define (node-deep-copy node)
       (node-let node elements children size
-        (let1 new-children (and children (chain children (vector-length) (make-vector)))
+        (let1 new-children (chain-and children (vector-length _) (make-vector _))
           (when new-children
             (let loop ((i 0))
-              (unless (> i size)
+              (unless (is i > size)
                 (chain (vector-ref i children)
-                       (node-deep-copy)
-                       (vector-set! new-children i))
+                       (node-deep-copy _)
+                       (vector-set! new-children i _))
                 (loop (+ i 1)))))
           (make-node (vector-copy elements) new-children size))))
 
@@ -128,7 +128,7 @@
         (define key (car pair))
         (define i (find>= elements key <? size))
         (cond
-          ((and (< i size) (=? key (car (vector-ref elements i))))
+          ((and (is i < size) (is key =? (car (vector-ref elements i))))
             (let1 new-elements (vector-copy elements)
               (vector-set! new-elements i pair)
               (make-node new-elements (node-children node) size)))
@@ -159,7 +159,7 @@
         (define key (car pair))
         (define i (find>= elements key <? size))
         (cond
-          ((and (< i size) (=? key (car (vector-ref elements i))))
+          ((and (is i < size) (is key =? (car (vector-ref elements i))))
             (vector-set! elements i pair)
             #f)
           ((not children)
@@ -223,23 +223,21 @@
     (define (node-get node key failure =? <?)
       (node-let node elements children size
         (define i (find>= elements key <? size))
-        (define pair (and (< i size) (vector-ref elements i)))
+        (define pair (and (is i < size) (vector-ref elements i)))
         (cond
-          ((and pair (=? (car pair) key)) (cdr pair))
+          ((and pair (is (car pair) =? key)) (cdr pair))
           ((not children) (failure))
           (else (node-get (vector-ref children i) key failure =? <?)))))
 
-    (define btree-ref
-      (case-lambda
-        ((btree key)
-          (btree-ref btree key (λ () (error "btree: key not found" (list key)))))
-        ((btree key failure)
-          (let1 comparator (btree-key-comparator btree)
-            (node-get (btree-root btree)
-                      key
-                      failure
-                      (comparator-equality-predicate comparator)
-                      (comparator-ordering-predicate comparator))))))
+    (define+ (btree-ref btree key
+                        :optional
+                        (failure (λ() (error "btree: key not found" key))))
+      (define comparator (btree-key-comparator btree))
+      (node-get (btree-root btree)
+                key
+                failure
+                (comparator-equality-predicate comparator)
+                (comparator-ordering-predicate comparator)))
 
     (define (node-delete node key =? <? min-size)
       (node-let node elements children size
@@ -247,15 +245,15 @@
         (define pair (and (< i size) (vector-ref elements i)))
         (cond
           ((not children)
-            (if (and pair (=? (car pair) key))
+            (if (and pair (is (car pair) =? key))
               (let1 new-elements (vector-copy elements)
                 (vector-remove! new-elements i)
                 (values pair (make-node new-elements #f (- size 1))))
               (values #f node)))
-          ((and pair (=? (car pair) key))
+          ((and pair (is (car pair) =? key))
             (values pair
               (let1-values (separator right) (chain (vector-ref children (+ i 1))
-                                                    (node-pop-smallest <> min-size))
+                                                    (node-pop-smallest _ min-size))
                 (node-balance node (+ i 1) separator right min-size))))
           (else
             (let1-values (deleted new-child)
@@ -318,7 +316,7 @@
         (cond
           (children
             (let1-values (popped new-left) (chain (vector-ref children 0)
-                                                  (node-pop-smallest <> min-size))
+                                                  (node-pop-smallest _ min-size))
               (values popped (node-balance node 0 #f new-left min-size))))
           ((zero? size)
             (values #f node))
@@ -368,14 +366,14 @@
           (vector-set! p-ch i new-child)
           (when separator-before
             (vector-set! p-el (- i 1) separator-before))
-          (when (< c-sz min-size)
-            (let ((left (and (> i 0) (vector-ref p-ch (- i 1))))
-                  (right (and (< i p-sz) (vector-ref p-ch (+ i 1)))))
+          (when (is c-sz < min-size)
+            (let ((left (and (is i > 0) (vector-ref p-ch (- i 1))))
+                  (right (and (is i < p-sz) (vector-ref p-ch (+ i 1)))))
               (cond
-                ((and right (> (node-size right) min-size))
+                ((and right (is (node-size right) > min-size))
                   (vector-set! p-ch (+ i 1) (node-copy right))
                   (rotate-right! new-parent i))
-                ((and left (> (node-size left) min-size))
+                ((and left (is (node-size left) > min-size))
                   (vector-set! p-ch (- i 1) (node-copy left))
                   (rotate-left! new-parent i))
                 (right
@@ -387,12 +385,12 @@
     (define (node-balance! node i min-size)
       (node-let node p-el p-ch p-sz
         (node-let (vector-ref p-ch i) c-el c-ch c-sz
-          (when (< c-sz min-size)
-            (let ((left (and (> i 0) (vector-ref p-ch (- i 1))))
-                  (right (and (< i p-sz) (vector-ref p-ch (+ i 1)))))
+          (when (is c-sz < min-size)
+            (let ((left (and (is i > 0) (vector-ref p-ch (- i 1))))
+                  (right (and (is i < p-sz) (vector-ref p-ch (+ i 1)))))
               (cond
-                ((and right (> (node-size right) min-size)) (rotate-right! node i))
-                ((and left (> (node-size left) min-size)) (rotate-left! node i))
+                ((and right (is (node-size right) > min-size)) (rotate-right! node i))
+                ((and left (is (node-size left) > min-size)) (rotate-left! node i))
                 (right (merge-right! node i))
                 (else (merge-left! node i))))))))
 
@@ -473,13 +471,13 @@
         (if children
           (let loop ((i (- size 1))
                      (accum (node-fold-right kons knil (vector-ref children size))))
-            (if (< i 0)
+            (if (negative? i)
               accum
               (loop (- i 1) (node-fold-right kons
                                              (kons (vector-ref elements i) accum)
                                              (vector-ref children i)))))
           (let loop ((i (- size 1)) (accum knil))
-            (if (< i 0)
+            (if (negative? i)
               accum
               (loop (- i 1) (kons (vector-ref elements i) accum)))))))
 
@@ -489,7 +487,7 @@
     (define (btree-fold-right kons knil btree)
       (node-fold-right kons knil (btree-root btree)))
 
-    (define btree-empty? (λ=> (btree-root) (node-size) (zero?)))
+    (define btree-empty? (compose zero? node-size btree-root))
 
     (define (btree->alist btree)
       (btree-fold-right cons '() btree))
@@ -536,10 +534,10 @@
       (define key-comparator (btree-key-comparator btree))
       (btree-fold (λ((k . v) h)
                     (chain (modulo (* h 33) (hash-bound))
-                           (+ (comparator-hash key-comparator k))
-                           (* 33)
-                           (modulo <> (hash-bound))
-                           (+ (comparator-hash value-comparator v))))
+                           (+ _ (comparator-hash key-comparator k))
+                           (* _ 33)
+                           (modulo _ (hash-bound))
+                           (+ _ (comparator-hash value-comparator v))))
                   (hash-salt)
                   btree))
 

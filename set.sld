@@ -91,8 +91,8 @@
             (text-span "#,(set" color)
             (whitespace-span))
           (chain (set->list set)
-                 (map datum->block)
-                 (intercalate (whitespace-span)))
+                 (map datum->block _)
+                 (intercalate (whitespace-span) _))
           (list
             (text-span ")" color)))))
 

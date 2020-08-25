@@ -19,13 +19,13 @@
     (define (reported title . content)
       (fn (width)
         (chain (trimmed/right (- width 4) title)
-               (as-light-blue)
-               (each "┤ " <> " ├")
-               (padded width)
-               (as-yellow)
-               (with ((pad-char #\─) (ellipsis "…")))
-               (each fl nl <> nl nl (each-in-list content))
-               (terminal-aware))))
+               (as-light-blue _)
+               (each "┤ " _ " ├")
+               (padded width _)
+               (as-yellow _)
+               (with ((pad-char #\─) (ellipsis "…")) _)
+               (each fl nl _ nl nl (each-in-list content))
+               (terminal-aware _))))
 
     (define (contains-newline? str)
       (call/cc (λ return
@@ -71,19 +71,19 @@
                   (each (as-bold (as-black (trimmed/right width filename)) nl))
                   nothing)
                 (chain annotations
-                  (map (cut annotation-range->width-range <> string-width lines))
-                  (list-sort annotation<?)
-                  (chunk-annotations width line-numbers?)
+                  (map (cut annotation-range->width-range <> string-width lines) _)
+                  (list-sort annotation<? _)
+                  (chunk-annotations width line-numbers? _)
                   (joined
                     (cut code-snapshot-chunk width string-width lines line-numbers? <>)
-                    <>
+                    _
                     (each fl (as-gray "…"))))
                 fl)))))))
 
     (define (code-snapshot-chunk width string-width source-lines-stream line-numbers? annotations)
       (define lines (map car annotations))
-      (define min-line (chain lines (fold min +inf.0) (exact) (- <> 2) (max 1)))
-      (define max-line (chain lines (fold max 0) (+ 3)))
+      (define min-line (chain lines (fold min +inf.0 _) (exact _) (- _ 2) (max _ 1)))
+      (define max-line (chain lines (fold max 0 _) (+ _ 3)))
       (define line-number-width
         (if line-numbers?
           (+ 1 (string-width (number->string max-line)))
@@ -91,9 +91,9 @@
       (define code-width (- width line-number-width))
       (define code-lines
         (chain source-lines-stream
-               (stream-drop min-line)
-               (stream-take (- max-line min-line))
-               (stream->list)))
+               (stream-drop min-line _)
+               (stream-take (- max-line min-line) _)
+               (stream->list _)))
       (define widths (map string-width code-lines))
       (define offset
         (compute-offset annotations code-width (fold max 0 widths)))
@@ -165,16 +165,16 @@
 
     (define (compute-offset annotations width max-line-width)
       (define leftmost
-        (chain annotations (map caddr) (fold min +inf.0) (exact)))
+        (chain annotations (map caddr _) (fold min +inf.0 _) (exact _)))
       (define rightmost
-        (chain annotations (map cadr) (fold max 0)))
+        (chain annotations (map cadr _) (fold max 0 _)))
       (if (and (<= max-line-width width) (< rightmost width))
         0
         (chain (+ leftmost rightmost)
-               (quotient <> 2)
-               (- <> (quotient width 2))
-               (min (- (max rightmost max-line-width) width))
-               (max 0))))
+               (quotient _ 2)
+               (- _ (quotient width 2))
+               (min _ (- (max rightmost max-line-width) width))
+               (max _ 0))))
 
     (define (chunk-annotations width line-numbers? annotations)
       (let loop ((anns annotations) (last-line #f) (chunk '()) (skipped '()))
@@ -198,7 +198,7 @@
                                (string-length (number->string last-line))
                                1))))
                     (any (is (car anns) annotation-overlaps? _)
-                         (filter (λ=> (car) (= last-line)) chunk))))
+                         (filter (λ=> (car _) (= _ last-line)) chunk))))
             (loop (cdr anns) last-line chunk (snoc skipped (car anns))))
           (else
             (loop (cdr anns) (caar anns) (snoc chunk (car anns)) skipped)))))
@@ -209,7 +209,7 @@
           groups
           (let*-values
             (((line) (caar remaining))
-             ((group not-group) (partition (λ=> (car) (= <> line)) remaining)))
+             ((group not-group) (partition (λ=> (car _) (= _ line)) remaining)))
             (loop not-group (snoc groups (cons line group)))))))
 
     ; splits in reverse, but that doesn't matter; only used for min-text-width
@@ -252,21 +252,21 @@
                           (label-row-fold-step width)
                           '((0 ()))
                           annotations
-                          (map (λ=> (split-string word-separator?)
-                                    (map string-width)
-                                    (fold max *min-wrap-width*))
+                          (map (λ=> (split-string word-separator? _)
+                                    (map string-width _)
+                                    (fold max *min-wrap-width* _))
                                msgs)
                           (map string-width msgs)
                           (snoc (map cadr (cdr annotations)) width))
-                        (map cadr)
-                        (filter pair?)
-                        (reverse)
+                        (map cadr _)
+                        (filter pair? _)
+                        (reverse _)
                         ((λ xs
                            (if (null? xs)
                              nothing
                              (each
                                (each-in-list (map (cut apply columnar <>) xs))
-                               nl)))))))
+                               nl))) _))))
                 (each underlines fl labels)))))))
 
     (define (label-row-fold-step width)

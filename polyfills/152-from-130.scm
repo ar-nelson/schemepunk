@@ -58,11 +58,11 @@
 
 (define (string-contains str1 . o)
   (chain-and (apply string-contains/130 str1 o)
-             (string-cursor->index str1 <>)))
+             (string-cursor->index str1 _)))
 
 (define (string-contains-right str1 . o)
   (chain-and (apply string-contains-right/130 str1 o)
-             (string-cursor->index str1 <>)))
+             (string-cursor->index str1 _)))
 
 (define+ (string-join strs :optional (delim " ") (grammar 'infix))
   (string-join/130 strs delim grammar))
@@ -103,18 +103,18 @@
                        ((prefix infix strict-infix) limit)
                        ((suffix) (+ limit 1))))
              (chars (chain (substring str start (+ start limit*))
-                           (string->list <>)
-                           (map string <>))))
+                           (string->list _)
+                           (map string _))))
         (snoc (case grammar ((prefix) (cons "" chars)) (else chars))
               (substring str (+ start limit*) end)))
       (chain (substring str start end)
-             (string->list <>)
-             (map string <>)))))
+             (string->list _)
+             (map string _)))))
 
 (define+ (string-take-while str pred? :optional (start #f) (end #f))
   (if start
     (string-take-while (%substr str start end) pred?)
-    (substring/cursors str 
+    (substring/cursors str
       (string-cursor-start str)
       (string-skip/130 str pred?))))
 
@@ -132,7 +132,7 @@
   (if start
     (string-span (%substr str start end) pred?)
     (let1 last (string-skip/130 str pred?)
-      (values 
+      (values
         (substring/cursors str (string-cursor-start str) last)
         (substring/cursors str last (string-cursor-end str))))))
 

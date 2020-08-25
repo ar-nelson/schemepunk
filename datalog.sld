@@ -8,6 +8,7 @@
   (import (scheme base)
           (scheme case-lambda)
           (schemepunk syntax)
+          (schemepunk function)
           (schemepunk list)
           (schemepunk vector)
           (schemepunk string)
@@ -41,9 +42,9 @@
       (name var->symbol))
 
     (define (var<? x y)
-      (and (not (eq? x y))
-        (if (symbol=? (var->symbol x) (var->symbol y))
-          (identity<? x y)
+      (and (isnt x eq? y)
+        (if (is (var->symbol x) symbol=? (var->symbol y))
+          (is x identity<? y)
           (<? symbol-comparator (var->symbol x) (var->symbol y)))))
 
     (define var-comparator
@@ -51,7 +52,7 @@
 
     (define wildcard-var (make-var '_))
 
-    (define var->string (λ=> (var->symbol) (symbol->string)))
+    (define var->string (compose symbol->string var->symbol))
 
     (define-record-type Rule
       (make-rule head body negatives guards)
@@ -66,7 +67,7 @@
         (if (var? t) (var->string t) (format #f "~s" t)))
       (format #f "~a(~a)"
         (caar a)
-        (chain (cdr a) (vector->list) (map term->string) (string-join <> ", "))))
+        (chain (cdr a) (vector->list _) (map term->string _) (string-join _ ", "))))
 
     (define (rule->string r)
       (format #f "~a :- ~a"
@@ -75,7 +76,7 @@
           (vector->list
             (vector-append
               (vector-map atom->string (rule-body r))
-              (vector-map (λ=> (atom->string) (string-append "¬")) (rule-negatives r))))
+              (vector-map (λ=> (atom->string _) (string-append "¬" _)) (rule-negatives r))))
           ", ")))
 
     (define db-comparator
@@ -222,16 +223,17 @@
       (unless (db-rules-stable?) (update-rules!))
       (unless (db-facts-stable?) (update-facts!))
       (chain (with-arity predicate params)
-             (multimap-ref (db-derived-facts))
-             (set->list)
-             (map (cute match-vars params <> (mapping var-comparator)))
-             (filter (λ x x))
-             (map mapping->alist)
+             (multimap-ref (db-derived-facts) _)
+             (set->list _)
+             (map (cute match-vars params <> (mapping var-comparator)) _)
+             (filter identity _)
+             (map mapping->alist _)
              (map (cute map
                         (if var-names
                           (λ((k . v)) (cons (cdr (assq k var-names)) v))
-                          (λ x x))
-                        <>))))
+                          identity)
+                        <>)
+                  _)))
 
     (define (update-rules!)
       (define rules
@@ -249,8 +251,8 @@
         (λ rule
           (vector-for-each
             (λ atom (chain (car atom)
-                           (multimap-ref (db-derived-facts))
-                           (multimap-adjoin-set! (db-new-facts) (car atom))))
+                           (multimap-ref (db-derived-facts) _)
+                           (multimap-adjoin-set! (db-new-facts) (car atom) _)))
             (vector-append (rule-body rule) (rule-negatives rule))))
         (car (db-new-rules)))
       (set-car! (db-new-rules) '()))
@@ -260,8 +262,8 @@
       (multimap-union! (db-facts) new-facts)
       (multimap-union! (db-derived-facts) new-facts)
       (for-each
-        (λ=> (semi-naive-update! <> new-facts new-facts)
-             (multimap-union! new-facts))
+        (λ=> (semi-naive-update! _ new-facts new-facts)
+             (multimap-union! new-facts _))
         (car (db-stratified-rules)))
       (multimap-clear! new-facts))
 
@@ -277,12 +279,12 @@
         (else
           (multimap-union! (db-derived-facts) new-facts)
           (chain (multimap-union all-new-facts new-facts)
-                 (semi-naive-update! rules new-facts)))))
+                 (semi-naive-update! rules new-facts _)))))
 
     (define (can-update? rule facts)
       (chain (rule-body rule)
-             (vector-map car)
-             (vector-any (cut multimap-contains-key? facts <>))))
+             (vector-map car _)
+             (vector-any (cut multimap-contains-key? facts <>) _)))
 
     (define (generate-facts-from-rule! rule out)
       (define predicate (car (rule-head rule)))
@@ -304,8 +306,8 @@
                       (when (multimap-contains? (db-facts) apred tuple)
                         (multimap-adjoin! var-map-deps matched (cons apred tuple))
                         (chain (cons apred tuple)
-                               (multimap-ref (db-fact-dependencies))
-                               (multimap-adjoin-set! var-map-deps matched)))))
+                               (multimap-ref (db-fact-dependencies) _)
+                               (multimap-adjoin-set! var-map-deps matched _)))))
                   tuples))
               var-maps)
             new-var-maps)
@@ -330,14 +332,15 @@
                     (set-for-each
                       (cute multimap-adjoin! (db-fact-dependents) <> (cons predicate tuple))
                       deps))
-                  (multimap-adjoin! out predicate tuple))))))))
+                  (multimap-adjoin! out predicate tuple)))))
+          _)))
 
     (define (update-rule-dependencies! deps neg-deps rules)
       ; Direct links
       (vector-for-each
         (λ rule
            (let1 p (car (rule-head rule))
-             (vector-for-each (λ=> (car) (multimap-adjoin! deps p)) (rule-body rule))
+             (vector-for-each (λ=> (car _) (multimap-adjoin! deps p _)) (rule-body rule))
              (vector-for-each
                (λ x (multimap-adjoin! deps p (car x))
                     (multimap-adjoin! neg-deps p (car x)))
@@ -359,8 +362,8 @@
 
       ; Detect cycles
       (let1 xs (chain (multimap-keys neg-deps)
-                      (filter (λ x (multimap-contains? neg-deps x x)))
-                      (map (λ((name . arity)) (format #f "~a/~a" name arity))))
+                      (filter (λ x (multimap-contains? neg-deps x x)) _)
+                      (map (λ((name . arity)) (format #f "~a/~a" name arity)) _))
         (unless (null? xs)
           (error "Cycle in Datalog negative dependency" xs))))
 
@@ -370,12 +373,14 @@
           (if (vector-empty? rules) '()
             (let1-values (split stratum-start)
               (vector-partition
-                (λ=> (rule-head)
-                     (car)
-                     (multimap-ref neg-deps)
-                     (set-any? (λ dep (vector-any (λ=> (rule-head) (car) (equal? dep)) rules))))
+                (λ=> (rule-head _)
+                     (car _)
+                     (multimap-ref neg-deps _)
+                     (set-any?
+                       (λ dep (vector-any (compose (is _ equal? dep) car rule-head) rules))
+                       _))
                 rules)
-              (if (< stratum-start (vector-length rules))
+              (if (is stratum-start < (vector-length rules))
                 (cons (vector-copy split stratum-start)
                       (loop (vector-copy split 0 stratum-start)))
                 (error "Datalog stratification failed" rules)))))))

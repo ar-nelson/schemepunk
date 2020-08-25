@@ -9,6 +9,7 @@
           (scheme cxr)
           (scheme file)
           (schemepunk syntax)
+          (schemepunk function)
           (schemepunk list)
           (schemepunk generator)
           (schemepunk show base)
@@ -17,7 +18,7 @@
 
   (begin
     (define (span-list-width string-width spans)
-      (fold + 0 (map (λ=> (span-text) (string-width)) spans)))
+      (fold + 0 (map (compose string-width span-text) spans)))
 
     (define (pad-span size pad-char)
       (whitespace-span (make-string size pad-char)))
@@ -48,7 +49,7 @@
 
     (define (column-gen string-width pad-char columns)
       (define (next-gen)
-        (chain columns
+        (match
           (fold-right
             (λ((gen width align infinite?) (accum continue?))
               (match (take-line gen string-width)
@@ -65,9 +66,10 @@
                                              pad-char)
                             accum)
                     (or continue? (not infinite?))))))
-            `((,(newline-span)) #f))
-          ((λ((line-gen valid?))
-             (if valid? (list->generator line-gen) (generator))))))
+            `((,(newline-span)) #f)
+            columns)
+          ((line-gen valid?)
+            (if valid? (list->generator line-gen) (generator)))))
       (define gen (next-gen))
       (λ()
         (let1 span (gen)
@@ -78,7 +80,7 @@
     (define (table-gen string-width pad-char columns)
       (let loop ((rows '())
                  (widths (map (λ((_ w . _)) (if (integer? w) w 0)) columns)))
-        (chain columns
+        (match
           (fold-right
             (λ(old-width (gen _ align infinite?) (row widths continue?))
               (match (take-line gen string-width)
@@ -90,23 +92,24 @@
                               widths)
                         (or continue? (not infinite?))))))
             '(() () #f)
-            widths)
-          ((λ((row widths continue?))
-             (if continue?
-               (loop (cons row rows) widths)
-               (fold
-                 (λ(cells gen)
-                   (chain cells
-                          (append-map
-                            (λ(width (_ _ align _) spans)
-                              (chain (span-list-width string-width spans)
-                                     (pad-column-line spans align <> width pad-char)))
-                            widths
-                            columns)
-                          (list->generator)
-                          (gappend <> (generator (newline-span)) gen)))
-                 (generator)
-                 rows)))))))
+            widths
+            columns)
+          ((_ widths #f)
+            (fold
+              (λ(cells gen)
+                (chain (append-map
+                         (λ(width (_ _ align _) spans)
+                           (chain (span-list-width string-width spans)
+                                  (pad-column-line spans align _ width pad-char)))
+                         widths
+                         columns
+                         cells)
+                       (list->generator _)
+                       (gappend _ (generator (newline-span)) gen)))
+              (generator)
+              rows))
+          ((row widths #t)
+            (loop (cons row rows) widths)))))
 
     (define (build-columns column-args string-width pad-char)
       (match-let1 (columns . _)
@@ -119,7 +122,7 @@
                 (list cols width align #t))
               ((? number?)
                 (assume (positive? arg))
-                (assume (or (integer? arg) (< 0 arg 1)))
+                (assume (or (integer? arg) (is 0 < arg < 1)))
                 (list cols arg align infinite))
               ((? string?)
                 `(((,(each-in-list (circular-list arg nl)) ,(string-width arg) #f #t)
@@ -176,13 +179,14 @@
         (λ vars
           ((span-generator->formatter
              (chain (build-columns columns string-width pad-char)
-                    (distribute-column-widths total-width)
+                    (distribute-column-widths total-width _)
                     (map
                       (λ((fmt col-width . rest))
                         `(,((with ((row start-row) (col 0) (width col-width)) fmt) vars)
                           ,col-width
-                          ,@rest)))
-                    (column-gen string-width pad-char)))
+                          ,@rest))
+                      _)
+                    (column-gen string-width pad-char _)))
            vars))))
 
     (define (tabular . columns)
@@ -196,8 +200,9 @@
                           `(,((with ((row start-row) (col 0) (width col-width)) fmt) vars)
                             ,(if orig-width col-width 0)
                             ,@rest))
-                        cols)
-                      (table-gen string-width pad-char))))
+                        cols
+                        _)
+                      (table-gen string-width pad-char _))))
            vars))))
 
     (define (boxed . contents)
@@ -220,9 +225,9 @@
             (let*-values
               (((gen gen2) (gfork gen))
                ((len) (chain gen2
-                             (gtake-while (λ=> (span-type) (eq? 'newline) (not)))
-                             (gmap (λ=> (span-text) (string-width)))
-                             (generator-fold + 0))))
+                             (gtake-while (compose (isnt _ eq? 'newline) span-type) _)
+                             (gmap (compose string-width span-text) _)
+                             (generator-fold + 0 _))))
               (each
                 (color nw (make-string (- len 2) h) ne)
                 nl
@@ -314,19 +319,20 @@
                        (if (null? word) `(() ,@words) `(() ,word ,@words)))
                      (else
                        `((,@word ,span) ,@words))))
-                 '(()))
-               (filter pair?)
-               (reverse)
-               (wrap-fold-words <>
+                 '(())
+                 _)
+               (filter pair? _)
+               (reverse _)
+               (wrap-fold-words _
                                 '()
                                 width
                                 (cut span-list-width string-width <>)
                                 cons)
-               (reverse)
+               (reverse _)
                (joined
-                 (λ=> (map (λ=> (list->generator) (span-generator->formatter)))
-                      (joined each <> pad-char))
-                 <>
+                 (λ=> (map (λ=> (list->generator _) (span-generator->formatter _)) _)
+                      (joined each _ pad-char))
+                 _
                  fl)))))
 
     (define (wrapped/list ls)
@@ -375,15 +381,16 @@
                        (if (null? word) `(() ,@words) `(() ,word ,@words)))
                      (else
                        `((,@word ,span) ,@words))))
-                 '(()))
-               (filter pair?)
-               (reverse)
-               (wrap-fold-words <>
+                 '(())
+                 _)
+               (filter pair? _)
+               (reverse _)
+               (wrap-fold-words _
                                 '()
                                 width
                                 (cut span-list-width string-width <>)
                                 cons)
-               (match <>
+               (match _
                  (() fl)
                  ((last . init)
                    (each
@@ -391,19 +398,19 @@
                        (λ words
                          (let1 lengths (map (cut span-list-width string-width <>) words)
                            (chain (reverse words)
-                             (map (λ(len spans) (list (list->generator spans) len #f #f)) lengths)
-                             (intercalate `(,(generator) #f left #f))
-                             (distribute-column-widths width)
-                             (column-gen string-width pad-char)
-                             (span-generator->formatter))))
+                             (map (λ(len spans) (list (list->generator spans) len #f #f)) lengths _)
+                             (intercalate `(,(generator) #f left #f) _)
+                             (distribute-column-widths width _)
+                             (column-gen string-width pad-char _)
+                             (span-generator->formatter _))))
                        (reverse init))
-                     (joined (λ=> (list->generator) (span-generator->formatter))
+                     (joined (λ=> (list->generator _) (span-generator->formatter _))
                              last
                              pad-char))))))))
 
     (define (collapsed-if-one-line . ls)
       (call-with-output-generator (wrapped (each-in-list ls))
         (λ gen
-          (if (eof-object? ((gfilter (λ=> (span-type) (eqv? 'newline)) gen)))
+          (if (eof-object? ((gfilter (compose (is _ eqv? 'newline) span-type) gen)))
             (wrapped (each-in-list ls))
             (each-in-list ls)))))))

@@ -109,14 +109,16 @@
                                            (as-bold "help")
                                            ".")))))
                      (else (proc o a command co ca)))))
-               identity))
+               identity)
+             _)
             ((if (conf-get spec 'default-help-option)
                (λ proc
                  (λ(options a c co ca)
                    (if (conf-get options 'help)
                      (show (current-error-port) (app-help spec args))
                      (proc options a c co ca))))
-               identity))))))
+               identity)
+             _)))))
 
     (define (spec-with-help spec)
       (define options-spec (conf-get-list spec 'options))
@@ -168,15 +170,15 @@
             (values options (reverse extra-args) #f '()))
           (("--" . all-args)
             (values options (append (reverse extra-args) all-args) #f '()))
-          (((? (λ=> (string->symbol) (assv <> commands-spec)) command) . rest)
+          (((? (λ=> (string->symbol _) (assv _ commands-spec)) command) . rest)
             (values options (reverse extra-args) (string->symbol command) rest))
-          (((? (λ=> (substring <> 0 2) (equal? "--")) option) . rest)
+          (((? (λ=> (substring _ 0 2) (equal? _ "--")) option) . rest)
             (match-let1 (opt rest)
                         (parse-long-option options-spec (string-drop option 2) rest)
               (loop (cons opt options) extra-args rest)))
           (("-" . rest)
             (loop options (cons "-" extra-args) rest))
-          (((? (λ=> (substring <> 0 1) (equal? "-")) option) . rest)
+          (((? (λ=> (substring _ 0 1) (equal? _ "-")) option) . rest)
             (match-let1 (new-options rest)
                         (parse-short-option options-spec (string-drop option 1) rest)
               (loop (append new-options options) extra-args rest)))
@@ -245,8 +247,9 @@
                     (fail "Missing value for option " (as-bold "-" ch) "."))))
               (else
                 (fail "Unrecognized option " (as-bold "-" ch) "."))))
-          '())
-        (list <> rest)))
+          '()
+          _)
+        (list _ rest)))
 
     (define (parse-option-value option-spec option-name after= rest)
       (define flag? (eqv? 'boolean (or (conf-get option-spec 'type) 'boolean)))
@@ -280,16 +283,16 @@
       (match type
         (('list el)
           (let1-values (vals errs) (chain str
-                                          (string-split <> ",")
-                                          (map (cut parse-value el <>))
-                                          (unzip2))
+                                          (string-split _ ",")
+                                          (map (cut parse-value el <>) _)
+                                          (unzip2 _))
             (list vals (find string? errs))))
         ('boolean
           (chain str
-                 (string-downcase)
-                 (member <> '("0" "no" "off" "false" "#f" "#false"))
-                 (not)
-                 (list <> #f)))
+                 (string-downcase _)
+                 (member _ '("0" "no" "off" "false" "#f" "#false"))
+                 (not _)
+                 (list _ #f)))
         ((or 'integer 'number 'real)
           (let1 n (string->number str)
             (list n
@@ -327,7 +330,7 @@
         (or (conf-get (cdr option-spec) 'type) 'boolean))
       (define doc-value
         (or (chain-and (conf-get (cdr option-spec) 'doc-value)
-                       (show #f))
+                       (show #f _))
             (and (not (eqv? 'boolean type))
                  (format #f "<~a>" type))))
       (string-join
@@ -336,7 +339,7 @@
                (conf-get-list (cdr option-spec) 'short))
           (list (long-option->string (symbol->string (car option-spec))
                                      doc-value))
-          (map (λ=> (format #f "~a") (long-option->string <> doc-value))
+          (map (λ=> (format #f "~a" _) (long-option->string _ doc-value))
                (conf-get-list (cdr option-spec) 'long)))
         separator))
 
@@ -383,7 +386,7 @@
       (define executable (if (pair? args) (car args) "app"))
       (define options-spec (conf-get-list spec* 'options))
       (define commands-spec (conf-get-list spec* 'commands))
-      (define documented-options (filter (λ=> (cdr) (assv 'doc)) options-spec))
+      (define documented-options (filter (λ=> (cdr _) (assv 'doc _)) options-spec))
       (fn (string-width)
         (each
           (as-bold "Usage:")
@@ -395,7 +398,7 @@
               " "
               (each
                 (wrapped/list
-                  (map (λ=> (option->string <> " | ") (format #f "[~a]"))
+                  (map (λ=> (option->string _ " | ") (format #f "[~a]" _))
                        options-spec))
                 fl
                 (wrapped/list
@@ -454,7 +457,7 @@
                          (string->symbol command)
                          command)))
       (define options-spec (conf-get-list command-spec 'options))
-      (define documented-options (filter (λ=> (cdr) (assv 'doc)) options-spec))
+      (define documented-options (filter (λ=> (cdr _) (assv 'doc _)) options-spec))
       (fn (string-width)
         (each
           (as-bold "Usage:")
@@ -471,7 +474,7 @@
               " "
               (each
                 (wrapped/list
-                  (map (λ=> (option->string <> " | ") (format #f "[~a]"))
+                  (map (λ=> (option->string _ " | ") (format #f "[~a]" _))
                        options-spec))
                 fl
                 (wrapped/list

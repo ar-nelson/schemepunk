@@ -58,8 +58,8 @@
                                          (queue:put (eof-object))
                                          (loop)))
                        (ex InterruptedException #f)))
-                   (runnable)
-                   (Thread)))
+                   (runnable _)
+                   (Thread _)))
           (thread:setDaemon #t)
           (thread:start)
           (CoroutineGenerator

@@ -179,11 +179,11 @@
                      (λ(p ps) (remove (cut sgr-param-overrides? p <>) ps))
                      ps1
                      ps2)
-                   (append <>
+                   (append _
                            ps2
                            (or fg2 fg1 '())
                            (or bg2 bg1 '()))
-                   (apply make-color))))))
+                   (apply make-color _))))))
 
     (define (make-8-bit-color r g b)
       (assume (integer? r))

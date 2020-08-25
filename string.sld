@@ -81,7 +81,7 @@
             (let1 len (- end start)
               (assume (positive? len))
               (string-unfold (is _ >= to)
-                             (λ=> (modulo <> len) (+ start <>) (string-ref str <>))
+                             (λ=> (modulo _ len) (+ start _) (string-ref str _))
                              (cut + <> 1)
                              from))))))
     ((library (srfi 152))
