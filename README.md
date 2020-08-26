@@ -26,6 +26,9 @@ Schemes that don't natively support this.
 `srfi-99`, `srfi-113`, `srfi-128`, `srfi-133`, and `ioctl`. (`ioctl` is only
 required on Unix-based OSes.)
 
+Schemepunk can also be built as a Chicken egg. Just run `chicken-install`
+(possibly with `-sudo`) in the repo's root directory.
+
 ## Modules
 
 - [`(schemepunk box)` - Boxes](#schemepunk-box)

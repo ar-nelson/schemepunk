@@ -47,7 +47,12 @@ clean:
 	find . -name '*.o' -delete
 	find . -name '*.o1' -delete
 	find . -name '*.o2' -delete
-	find . -name '*.slfasm' -delete
+	find . -name '*.slfasl' -delete
+	find . -name '*.so' -delete
+	find . -name '*.link' -delete
+	find . -name '*.import.scm' -delete
+	find . -name '*.build.sh' -delete
+	find . -name '*.install.sh' -delete
 
 watch:
 	nodemon -e scm,sld --exec 'make test || exit 1'

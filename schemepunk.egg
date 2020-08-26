@@ -1,0 +1,150 @@
+((author "Adam Nelson")
+ (version "0.0.1")
+ (license "Blue Oak Model License")
+ (dependencies r7rs utf8 box srfi-41 srfi-69 srfi-99 srfi-113 srfi-128 srfi-133 ioctl)
+ (component-options
+   (csc-options "-R" "r7rs" "-X" "r7rs" "-debug-level" "2"))
+ (components
+   (extension schemepunk.function
+     (source "function.sld"))
+   (extension schemepunk.syntax
+     (source "syntax.sld")
+     (component-dependencies schemepunk.function))
+   (extension schemepunk.list
+     (source "list.sld")
+     (component-dependencies schemepunk.syntax))
+   (extension schemepunk.vector
+     (source "vector.sld"))
+   (extension schemepunk.stream
+     (source "stream.sld"))
+   (extension schemepunk.string
+     (source "string.sld")
+     (component-dependencies schemepunk.syntax schemepunk.list))
+   (extension schemepunk.hook
+     (source "hook.sld")
+     (component-dependencies schemepunk.syntax schemepunk.list))
+   (extension schemepunk.term-colors
+     (source "term-colors.sld")
+     (component-dependencies schemepunk.syntax schemepunk.list))
+   (extension schemepunk.generator
+     (source "generator.sld")
+     (component-dependencies schemepunk.syntax schemepunk.list))
+   (extension schemepunk.show.span
+     (source "show/span.sld")
+     (component-dependencies
+       schemepunk.syntax schemepunk.list schemepunk.term-colors))
+   (extension schemepunk.show.block
+     (source "show/block.sld")
+     (component-dependencies
+       schemepunk.syntax schemepunk.list
+       schemepunk.generator schemepunk.show.span))
+   (extension schemepunk.show.numeric
+     (source "show/numeric.sld")
+     (component-dependencies
+       schemepunk.syntax schemepunk.list schemepunk.string))
+   (extension schemepunk.show.block.datum
+     (source "show/block/datum.sld")
+     (component-dependencies
+       schemepunk.syntax schemepunk.list schemepunk.box
+       schemepunk.generator schemepunk.term-colors
+       schemepunk.show.span schemepunk.show.numeric schemepunk.show.block))
+   (extension schemepunk.json
+     (source "json.sld"))
+   (extension schemepunk.show.block.json
+     (source "show/block/json.sld")
+     (component-dependencies
+       schemepunk.syntax schemepunk.list schemepunk.vector schemepunk.json))
+   (extension schemepunk.box
+     (source "box.sld"))
+   (extension schemepunk.path
+     (source "path.sld")
+     (component-dependencies schemepunk.syntax schemepunk.list))
+   (extension schemepunk.sort
+     (source "sort.sld"))
+   (extension schemepunk.comparator
+     (source "comparator.sld")
+     (component-dependencies schemepunk.syntax schemepunk.list))
+   (extension schemepunk.hash-table
+     (source "hash-table.sld")
+     (component-dependencies
+       schemepunk.syntax schemepunk.list schemepunk.comparator
+       schemepunk.show.span schemepunk.show.block schemepunk.show.block.datum))
+   (extension schemepunk.btree
+     (source "btree.sld")
+     (component-dependencies
+       schemepunk.syntax schemepunk.function schemepunk.list
+       schemepunk.comparator))
+   (extension schemepunk.mapping
+     (source "mapping.sld")
+     (component-dependencies
+       schemepunk.syntax schemepunk.list schemepunk.comparator schemepunk.btree
+       schemepunk.show.span schemepunk.show.block schemepunk.show.block.datum))
+   (extension schemepunk.set
+     (source "set.sld")
+     (component-dependencies
+       schemepunk.syntax schemepunk.list schemepunk.comparator
+       schemepunk.show.span schemepunk.show.block schemepunk.show.block.datum))
+   (extension schemepunk.multimap
+     (source "multimap.sld")
+     (component-dependencies
+       schemepunk.syntax schemepunk.function schemepunk.list
+       schemepunk.comparator schemepunk.set schemepunk.mapping
+       schemepunk.show.span schemepunk.show.block schemepunk.show.block.datum))
+   (extension schemepunk.show.terminal-width
+     (source "show/terminal-width.sld"))
+   (extension schemepunk.show.base
+     (source "show/base.sld")
+     (component-dependencies
+       schemepunk.syntax schemepunk.function schemepunk.list
+       schemepunk.generator schemepunk.comparator schemepunk.mapping
+       schemepunk.box schemepunk.show.span schemepunk.show.block
+       schemepunk.show.block.datum schemepunk.show.numeric
+       schemepunk.show.terminal-width))
+   (extension schemepunk.show.unicode
+     (source "show/unicode.sld")
+     (component-dependencies
+       schemepunk.syntax schemepunk.function schemepunk.generator
+       schemepunk.term-colors schemepunk.show.base schemepunk.show.span))
+   (extension schemepunk.show.pretty
+     (source "show/pretty.sld")
+     (component-dependencies
+       schemepunk.syntax schemepunk.show.base schemepunk.show.span
+       schemepunk.show.block schemepunk.show.block.datum schemepunk.show.block.json))
+   (extension schemepunk.show.color
+     (source "show/color.sld")
+     (component-dependencies
+       schemepunk.syntax schemepunk.generator schemepunk.term-colors
+       schemepunk.show.base schemepunk.show.span))
+   (extension schemepunk.show.columnar
+     (source "show/columnar.sld")
+     (component-dependencies
+       schemepunk.syntax schemepunk.function schemepunk.list schemepunk.generator
+       schemepunk.show.base schemepunk.show.span schemepunk.show.block))
+   (extension schemepunk.show
+     (source "show.sld")
+     (component-dependencies
+       schemepunk.show.base schemepunk.show.pretty schemepunk.show.unicode
+       schemepunk.show.color schemepunk.show.columnar))
+   (extension schemepunk.show.report
+     (source "show/report.sld")
+     (component-dependencies
+       schemepunk.syntax schemepunk.list schemepunk.string schemepunk.stream
+       schemepunk.sort schemepunk.show))
+   (extension schemepunk.show.debug
+     (source "show/debug.sld")
+     (component-dependencies schemepunk.show.base schemepunk.show.pretty))
+   (extension schemepunk.datalog
+     (source "datalog.sld")
+     (component-dependencies
+       schemepunk.syntax schemepunk.function schemepunk.list schemepunk.vector
+       schemepunk.string schemepunk.comparator schemepunk.set schemepunk.mapping
+       schemepunk.multimap))
+   (extension schemepunk.command
+     (source "command.sld")
+     (component-dependencies
+       schemepunk.syntax schemepunk.list schemepunk.function schemepunk.string
+       schemepunk.show.base schemepunk.show.columnar schemepunk.show.color))
+   (extension schemepunk.test
+     (source "test.sld")
+     (component-dependencies
+       schemepunk.syntax schemepunk.list schemepunk.show schemepunk.show.report))))

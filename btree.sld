@@ -87,7 +87,7 @@
           (when new-children
             (let loop ((i 0))
               (unless (is i > size)
-                (chain (vector-ref i children)
+                (chain (vector-ref children i)
                        (node-deep-copy _)
                        (vector-set! new-children i _))
                 (loop (+ i 1)))))

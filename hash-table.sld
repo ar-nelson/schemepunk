@@ -56,14 +56,27 @@
     (else
        (import (scheme case-lambda)
                (except (schemepunk comparator) string-hash string-ci-hash)
-               (rename (srfi 69)
-                       (hash-table-ref %hash-table-ref)
-                       (make-hash-table %make-hash-table)
-                       (alist->hash-table %alist->hash-table)
-                       (hash-table-copy %hash-table-copy)
-                       (hash-table-set! %hash-table-set!)
-                       (hash-table-delete! %hash-table-delete!)
-                       (hash-table-fold %hash-table-fold)))
+               (rename
+                 (only (srfi 69)
+                   make-hash-table hash-table? alist->hash-table
+                   hash-table-equivalence-function hash-table-hash-function
+
+                   hash-table-ref hash-table-ref/default hash-table-set!
+                   hash-table-delete! hash-table-exists? hash-table-update!
+                   hash-table-update!/default
+
+                   hash-table-size hash-table-keys hash-table-values
+                   hash-table-walk hash-table-fold hash-table->alist
+                   hash-table-copy hash-table-merge!
+
+                   hash string-hash string-ci-hash hash-by-identity)
+                 (hash-table-ref %hash-table-ref)
+                 (make-hash-table %make-hash-table)
+                 (alist->hash-table %alist->hash-table)
+                 (hash-table-copy %hash-table-copy)
+                 (hash-table-set! %hash-table-set!)
+                 (hash-table-delete! %hash-table-delete!)
+                 (hash-table-fold %hash-table-fold)))
        (include "polyfills/hash.scm")))
 
   (begin

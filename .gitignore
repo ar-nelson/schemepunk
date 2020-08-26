@@ -4,3 +4,7 @@ schemepunk
 *.meta
 *.o
 *.so
+*.link
+*.install.sh
+schemepunk.build.sh
+*.import.scm

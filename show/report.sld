@@ -8,8 +8,7 @@
           (schemepunk string)
           (schemepunk stream)
           (schemepunk sort)
-          (schemepunk show)
-          (schemepunk show debug))
+          (schemepunk show))
 
   (begin
     (define report-line
