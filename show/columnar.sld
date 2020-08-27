@@ -182,7 +182,12 @@
                     (distribute-column-widths total-width _)
                     (map
                       (λ((fmt col-width . rest))
-                        `(,((with ((row start-row) (col 0) (width col-width)) fmt) vars)
+                        `(,((with ((row start-row)
+                                   (col 0)
+                                   (width col-width)
+                                   (break-into-spans? #t))
+                               fmt)
+                             vars)
                           ,col-width
                           ,@rest))
                       _)
@@ -197,7 +202,12 @@
                (chain (distribute-column-widths total-width cols)
                       (map
                         (λ((_ orig-width . _) (fmt col-width . rest))
-                          `(,((with ((row start-row) (col 0) (width col-width)) fmt) vars)
+                          `(,((with ((row start-row)
+                                     (col 0)
+                                     (width col-width)
+                                     (break-into-spans? #t))
+                                fmt)
+                              vars)
                             ,(if orig-width col-width 0)
                             ,@rest))
                         cols
@@ -311,7 +321,8 @@
 
     (define (wrapped . ls)
       (fn (width string-width pad-char)
-        (call-with-output-generator (each-in-list ls)
+        (call-with-output-generator
+          (with ((break-into-spans? #t)) (each-in-list ls))
           (λ=> (generator-fold
                  (λ(span (word . words))
                    (case (span-type span)
@@ -373,7 +384,8 @@
 
     (define (justified . ls)
       (fn (width string-width pad-char)
-        (call-with-output-generator (each-in-list ls)
+        (call-with-output-generator
+          (with ((break-into-spans? #t)) (each-in-list ls))
           (λ=> (generator-fold
                  (λ(span (word . words))
                    (case (span-type span)

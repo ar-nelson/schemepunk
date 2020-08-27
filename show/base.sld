@@ -14,7 +14,7 @@
           string-width substring/width pad-char ellipsis
           radix precision decimal-sep decimal-align
           sign-rule comma-rule comma-sep word-separator?
-          ambiguous-is-wide?
+          ambiguous-is-wide? break-into-spans?
 
           span-generator->formatter call-with-output-generator)
 
@@ -31,6 +31,7 @@
           (schemepunk syntax)
           (schemepunk function)
           (schemepunk list)
+          (schemepunk string)
           (schemepunk generator)
           (schemepunk comparator)
           (schemepunk mapping)
@@ -91,6 +92,7 @@
     (define comma-sep (make-state-variable "comma-sep" #\,))
     (define word-separator? (make-state-variable "word-separator?" char-whitespace?))
     (define ambiguous-is-wide? (make-state-variable "ambiguous-is-wide?" #f))
+    (define break-into-spans? (make-state-variable "break-into-spans?" #f))
 
     (define (copy-vars vars)
       (mapping-map/monotone
@@ -129,10 +131,17 @@
 
     (define (output-default str)
       (λ vars
-        (chain (cute read-char (open-input-string str))
-               (char-generator->span-generator _ (get-var vars word-separator?))
-               (span-generator->formatter _)
-               (_ vars))))
+        (chain
+          (if (get-var vars break-into-spans?)
+            (char-generator->span-generator
+              (cute read-char (open-input-string str))
+              (get-var vars word-separator?))
+            (chain (string-split str "\n")
+                   (map text-span _)
+                   (intercalate (newline-span) _)
+                   (list->generator _)))
+          (span-generator->formatter _)
+          (_ vars))))
 
     (define output (make-state-variable "output" output-default))
 
@@ -548,35 +557,36 @@
     (define (trimmed/lazy width . fmts)
       (assume (nonnegative-integer? width))
       (λ vars
-        (match-let* ((string-width (get-var vars string-width))
-                     (substring/width (get-var vars substring/width))
-                     ((len spans)
-                        (call/cc (λ return
-                          (generator-fold
-                            (λ(span (len spans))
-                              (if (is len >= width)
-                                (return (list len spans))
-                                (list (+ len (string-width (span-text span)))
-                                      (cons span spans))))
-                            '(0 ())
-                            ((each-in-list fmts) vars))))))
-          (chain (if (is len > width)
-                   (let loop ((len len) (spans spans))
-                     (let1 span-len (string-width (span-text (car spans)))
-                       (cond
-                         ((is (- len span-len) > width)
-                           (loop (- len span-len) (cdr spans)))
-                         ((is (- len span-len) = width)
-                           (cdr spans))
-                         (else
-                           (cons
-                             (span-map-text
-                               (cut substring/width <> 0 (- span-len (- len width)))
-                               (car spans))
-                             (cdr spans))))))
-                   spans)
-                 (reverse _)
-                 (list->generator _)))))
+        (match-let*
+          ((string-width (get-var vars string-width))
+           (substring/width (get-var vars substring/width))
+           ((len spans)
+             (call/cc (λ return
+               (generator-fold
+                 (λ(span (len spans))
+                   (if (is len >= width)
+                     (return (list len spans))
+                     (list (+ len (string-width (span-text span)))
+                           (cons span spans))))
+                 '(0 ())
+                 ((with ((break-into-spans? #t)) (each-in-list fmts)) vars)))))
+           (reverse-trimmed-spans
+             (if (is len > width)
+               (let loop ((len len) (spans spans))
+                 (let1 span-len (string-width (span-text (car spans)))
+                   (cond
+                     ((is (- len span-len) > width)
+                       (loop (- len span-len) (cdr spans)))
+                     ((is (- len span-len) = width)
+                       (cdr spans))
+                     (else
+                       (cons
+                         (span-map-text
+                           (cut substring/width <> 0 (- span-len (- len width)))
+                           (car spans))
+                         (cdr spans))))))
+               spans)))
+          (list->generator (reverse reverse-trimmed-spans)))))
 
     (define (fitted width . fmts)
       (assume (nonnegative-integer? width))
