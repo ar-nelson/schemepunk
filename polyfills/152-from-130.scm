@@ -92,10 +92,13 @@
     (let1 result (string-split/130 str delim grammar limit start end)
       (cond-expand
         (chibi
-          ; Chibi bug: prefix doesn't work
+          ; Chibi bugs: prefix doesn't work, end-of-string delimiter doesn't work
           ; FIXME: When Chibi fixes this, remove this patch
-          (match (list grammar result)
-            (('prefix ("" . rest)) rest)
+          (cond
+            ((and (is grammar eqv? 'prefix) (match? ("" . _) result))
+              (cdr result))
+            ((and (isnt grammar eqv? 'suffix) (string-suffix? delim str #f #f start end))
+              (snoc result ""))
             (else result)))
         (else result)))
     (if (and limit (is limit < (- end start)))

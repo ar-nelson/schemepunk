@@ -1440,7 +1440,16 @@
   (test-equal "a!c"
     (let ((abc (string-copy "abc")))
       (string-fill! abc #\! 1 2)
-      abc)))
+      abc))
+
+  (test-equal '("x" "")
+    (string-split "x\n" "\n"))
+  (test-equal '("x")
+    (string-split "x\n" "\n" 'suffix))
+  (test-equal '("" "x")
+    (string-split "\nx" "\n"))
+  (test-equal '("x" "" "y")
+    (string-split "x\n\ny" "\n")))
 
 (test-group "Strings"
 
