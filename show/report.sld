@@ -26,13 +26,6 @@
                (each fl nl _ nl nl (each-in-list content))
                (terminal-aware _))))
 
-    (define (contains-newline? str)
-      (call/cc (λ return
-        (string-for-each
-          (λ x (case x ((#\newline) (return #t))))
-          str)
-        #f)))
-
     (define (wrapped/blocks . fmts)
       (let loop ((str "") (fmts fmts) (nl? #f))
         (cond
@@ -46,8 +39,9 @@
             (call-with-output (car fmts) (λ fmt-str
               (fn (string-width width)
                 (cond
-                  ((and (< (string-width fmt-str) (* width 2/3))
-                        (not (contains-newline? fmt-str)))
+                  ((and (is (string-width fmt-str) < (* width 2/3))
+                        (isnt fmt-str string-index (is _ eqv? #\newline))
+                        (isnt fmt-str string-contains "  "))
                     (loop (string-append str fmt-str) (cdr fmts) nl?))
                   ((string-null? str)
                     (each fmt-str (loop "" (cdr fmts) #t)))
@@ -106,7 +100,7 @@
       (let loop ((line 0)
                  (groups (group-by-line relative-annotations))
                  (out '()))
-        (if (< line (length code-lines))
+        (if (is line < (length code-lines))
           (let ((code (list-ref code-lines line))
                 (group (and (pair? groups) (= line (caar groups)) (car groups))))
             (loop
@@ -124,7 +118,7 @@
                 ,(trimmed/right code-width
                    (cond
                      ((zero? offset) code)
-                     ((<= (list-ref widths line) offset) nothing)
+                     ((is (list-ref widths line) <= offset) nothing)
                      (else (trimmed (- (list-ref widths line) offset) code))))
                 ,@(if group
                     `(,fl
@@ -144,13 +138,13 @@
         (line-stream port)))
 
     (define (annotation<? x y)
-      (or (< (car x) (car y))
-          (and (= (car x) (car y))
-               (< (caddr x) (caddr y)))))
+      (or (is (car x) < (car y))
+          (and (is (car x) = (car y))
+               (is (caddr x) < (caddr y)))))
 
     (define (annotation-overlaps? x y)
-      (or (<= (cadr x) (cadr y) (caddr x))
-          (<= (cadr x) (caddr y) (caddr x))))
+      (or (is (cadr x) <= (cadr y) <= (caddr x))
+          (is (cadr x) <= (caddr y) <= (caddr x))))
 
     (define (annotation-range->width-range annotation string-width lines)
       (match-let* (((line start end . rest) annotation)
@@ -167,7 +161,7 @@
         (chain annotations (map caddr _) (fold min +inf.0 _) (exact _)))
       (define rightmost
         (chain annotations (map cadr _) (fold max 0 _)))
-      (if (and (<= max-line-width width) (< rightmost width))
+      (if (and (is max-line-width <= width) (is rightmost < width))
         0
         (chain (+ leftmost rightmost)
                (quotient _ 2)
@@ -186,7 +180,7 @@
                 '())
               (else
                 (list chunk))))
-          ((and last-line (> (caar anns) (+ last-line 2)))
+          ((and last-line (is (caar anns) > (+ last-line 2)))
             (cons chunk (chunk-annotations width line-numbers? (append skipped anns))))
           ((and (eqv? last-line (caar anns))
                 (or (> (cadar anns)
@@ -278,36 +272,36 @@
           (let* ((min-wrap (min min-text-width max-text-width))
                  (left-space (- end left-edge))
                  (right-space (- right-edge 1 start))
-                 (left-fit (>= left-space min-wrap))
-                 (right-fit (>= right-space min-wrap))
+                 (left-fit (is left-space >= min-wrap))
+                 (right-fit (is right-space >= min-wrap))
                  (fmt (wrapped (color text-fmt))))
             (cond
               ((or left-fit right-fit)
                 (cons
-                  (if (> left-space right-space)
+                  (if (is left-space < right-space)
                     `(,(min (+ end 1) width)
                       (,@cols right ,(- end left-edge) ,fmt 1 ,nothing))
                     (let1 new-left-edge (min (+ start max-text-width 1)
                                              right-edge)
                       `(,new-left-edge (,@cols
-                                        ,@(if (<= start left-edge)
+                                        ,@(if (is start <= left-edge)
                                             '()
                                             (list (- start left-edge) nothing))
                                         left
                                         ,(- new-left-edge start)
                                         ,fmt))))
                   rest))
-              ((>= (- width start) min-wrap)
+              ((is (- width start) >= min-wrap)
                 `((0 ())
                   (,width (,@cols
-                           ,@(if (<= start left-edge)
+                           ,@(if (is start <= left-edge)
                                '()
                                (list (- start left-edge) nothing))
                            left
                            ,(- width start)
                            ,fmt)
                    ,@rest)))
-              ((>= end min-wrap)
+              ((is end >= min-wrap)
                 `((,(min (+ end 1) width) (right ,end ,fmt))
                   (,left-edge ,cols)
                   ,@rest))

@@ -143,12 +143,12 @@
     (define (pass-test name)
       (set-car! passed-count (+ (car passed-count) 1))
       (set-car! test-result-formats
-        `(,(indent) ,(as-green "✓ " name) ,nl ,@(car test-result-formats))))
+        `(,@(car test-result-formats) ,(indent) ,(as-green "✓ " name) ,nl)))
 
     (define (fail-test name err)
       (set-car! failed (snoc (car failed) `(,current-test-group ,name ,err)))
       (set-car! test-result-formats
-        `(,(indent) ,(as-red "✗ " name) ,nl ,@(car test-result-formats))))
+        `(,@(car test-result-formats) ,(indent) ,(as-red "✗ " name) ,nl)))
 
     (define-syntax test
       (syntax-rules ()
@@ -191,13 +191,13 @@
 
     (define (assert-equal actual expected)
       (unless ((current-test-comparator) actual expected)
-        (fail actual expected)))
+        (fail (pretty-color actual) (pretty-color expected))))
 
     (define (assert-approximate actual expected error)
       (unless (and (number? actual)
                    (>= actual (- expected error))
                    (<= actual (+ expected error)))
-        (fail actual expected)))
+        (fail (pretty-color actual) (pretty-color expected))))
 
     (define-syntax test-assert
       (syntax-rules ()
@@ -257,19 +257,17 @@
 
     (define (reported-failure suite test err)
       (reported test
-        (cond
-          ((failure? err)
-            (cond
-              ((pair? (cddr err))
-                (wrapped/blocks
-                  "Expected " (caddr err) " but got " (cadr err)))
-              ((string? (cadr err))
-                (wrapped (cadr err)))
-              ((procedure? (cadr err))
-                (cadr err))
-              (else
-                (pretty-color (cadr err)))))
-          ((procedure? err)
+        (match err
+          (('test-failure actual expected)
+            (wrapped/blocks
+              "Expected " expected " but got " actual))
+          (('test-failure (? string? msg))
+            (wrapped msg))
+          (('test-failure (? procedure? fmt))
+            fmt)
+          (('test-failure value)
+            (pretty-color value))
+          ((? procedure? fmt)
             err)
           (else
             (wrapped/blocks
