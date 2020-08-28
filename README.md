@@ -744,8 +744,8 @@ them; this can be overridden by setting the parameter `term-colors-enabled?` to
 `<color>` is a color object, which may be one of:
 
 - The 16 colors `black`, `red`, `yellow`, `green`, `blue`, `cyan`, `magenta`,
-  `white` `light-black` (or `gray`), `light-red`, `light-yellow`, `light-green`,
-  `light-blue`, `light-cyan`, `light-magenta`, and `light-white`.
+  `white`, `light-black` (or `gray`), `light-red`, `light-yellow`,
+  `light-green`, `light-blue`, `light-cyan`, `light-magenta`, and `light-white`.
 - The 8 bold colors `bold-black`, `bold-red`, `bold-yellow`, `bold-green`,
   `bold-blue`, `bold-cyan`, `bold-magenta`, and `bold-white`. Depending on your
   terminal, these may look exactly like the light colors, or they may be
@@ -778,9 +778,7 @@ that allow it to run SRFI 64 tests without modifications.
 
 ![Screenshot of unit test results](.readme-images/unit-test.png)
 
-Test suites are defined as `(test-group <name> <tests>…)`, where `<tests>` is          multimap-key-count multimap-value-count multimap-empty?)
-
-  (import (scheme base)
+Test suites are defined as `(test-group <name> <tests>…)`, where `<tests>` is
 one or more `(test <name> <expressions>…)` clauses. Test suite files have the
 `.test.scm` extension.
 
