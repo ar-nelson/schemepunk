@@ -1,5 +1,5 @@
 (define-library (schemepunk syntax)
-  (export λ λ=>
+  (export λ
           chain chain-and chain-when chain-lambda nest nest-reverse
           let1 let1-values
           inline-defines syntax-symbol-case
@@ -29,9 +29,9 @@
                 ; or the syntax level (phi=1), and (scheme base) is phi=0,
                 ; so anything used in syntax must import from (gerbil core).
                 lambda let cond else and define defrules
-                eof-object? eof-object reverse null? car cdr cons error
+                eof-object? eof-object reverse null? car cdr cons list error
 
-                syntax-case syntax with-syntax genident defrules
+                syntax-case syntax with-syntax genident defrules datum->syntax
                 underscore? ellipsis? identifier? free-identifier=?))
       (begin-syntax
         ; Gerbil doesn't define quasisyntax!
@@ -52,8 +52,21 @@
           ((_ (x . xs)) (%qs () (x . xs)))
           ((_ x) (syntax x)))
 
-        (define (syntax-violation name msg . rest)
-          (error msg (cons name rest)))))
+        (define (id=? x y) (and (identifier? x) (free-identifier=? x y)))
+
+        (define (syntax-violation name msg loc)
+          (error msg (list name loc)))))
+    (kawa
+      (import (rename
+                (only (kawa base)
+                  syntax-case with-syntax report-syntax-error gentemp
+                  datum->syntax syntax quasisyntax identifier? free-identifier=?)
+                (gentemp genident)))
+      (begin
+        (define (id=? x y) (and (identifier? x) (free-identifier=? x y)))
+
+        (define (syntax-violation name msg loc)
+          (report-syntax-error loc (string-append (symbol->string name) ": " msg)))))
     (else))
 
   (cond-expand
@@ -189,7 +202,7 @@
   (cond-expand
     ((and (not chicken) (library (srfi 197)))
       (import (srfi 197)))
-    (gerbil
+    ((or gerbil kawa)
       (include "polyfills/srfi-197-syntax-case.scm"))
     (else
       (include "polyfills/srfi-197-impl.scm")))
@@ -327,12 +340,19 @@
             ((_ . args)
               (%extract-placeholders not args () ())))))))
 
+  (cond-expand
+    (chicken
+      (export λ=>)
+      (begin
+        (define-syntax λ=>
+          (syntax-rules ()
+            ((_ . xs) (chain-lambda . xs))))))
+    (else
+      (export (rename chain-lambda λ=>))))
+
   (begin
     (define (nonnegative-integer? x)
       (and (number? x) (integer? x) (>= x 0)))
-
-    (define-syntax λ=>
-      (syntax-rules () ((_ . xs) (chain-lambda . xs))))
 
     (define-syntax let1
       (syntax-rules ()
