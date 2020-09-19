@@ -8,7 +8,6 @@
 
   (import (scheme base)
           (scheme char)
-          (scheme cxr)
           (scheme lazy)
           (scheme write)
           (schemepunk syntax)

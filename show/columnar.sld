@@ -6,7 +6,6 @@
           from-file line-numbers)
 
   (import (scheme base)
-          (scheme cxr)
           (scheme file)
           (schemepunk syntax)
           (schemepunk function)

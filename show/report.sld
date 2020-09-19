@@ -2,7 +2,6 @@
   (export reported report-line wrapped/blocks code-snapshot)
 
   (import (except (scheme base) string-length substring string make-string)
-          (scheme cxr)
           (schemepunk syntax)
           (schemepunk list)
           (schemepunk string)

@@ -1,5 +1,10 @@
 (define-library (schemepunk list)
-  (export ; (scheme list) functions
+  (export ; (scheme cxr) procedures
+          caaar caadr cadar caddr cdaar cdadr cddar cdddr
+          caaaar caaadr caadar caaddr cadaar cadadr caddar cadddr
+          cdaaar cdaadr cdadar cdaddr cddaar cddadr cdddar cddddr
+
+          ; (scheme list) procedures
           xcons cons* make-list list-tabulate
           list-copy circular-list iota
 
@@ -48,7 +53,7 @@
           lset-xor               lset-xor!
           lset-diff+intersection lset-diff+intersection!
 
-          ; extra functions
+          ; extra procedures
           snoc
           map-with-index
           intercalate
@@ -57,7 +62,7 @@
           topological-sort)
 
   (import (scheme base)
-          (scheme case-lambda)
+          (scheme cxr)
           (schemepunk syntax))
 
   (cond-expand

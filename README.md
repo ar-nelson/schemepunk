@@ -371,6 +371,9 @@ In addition to SRFI 1, this module exports several extra procedures:
 - `(map-with-index <fn> <list>)` is like `map`, but it expects `fn` to take two
   arguments. The second argument is the index of the list item.
 
+- `(intercalate <delimiter> <list>)` constructs a new list by inserting
+  `<delimiter>` between each pair of elements in `<list>`.
+
 - `(list-gen <fn>)` is a generator-style unfold. `fn` is a lambda that takes
   two arguments, usually named `yield` and `done`. `(yield x)` adds `x` to the
   end of the list being constructed, then recursively calls `fn`. `done` is the
