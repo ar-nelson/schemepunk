@@ -5,6 +5,7 @@
           btree-empty? btree-copy
           btree-ref btree-set btree-set!
           btree-fold btree-fold-right
+          btree-map/monotone btree-map/monotone!
           btree-delete btree-delete! btree-pop btree-pop!
           btree-subset? btree=? btree<? btree-hash
           make-btree-comparator btree-comparator)
@@ -23,7 +24,7 @@
     (define-record-type Btree
       (make-btree key-comparator max-size root)
       btree?
-      (key-comparator btree-key-comparator)
+      (key-comparator btree-key-comparator set-btree-key-comparator!)
       (max-size btree-max-size)
       (root btree-root set-btree-root!))
 
@@ -80,23 +81,6 @@
       (make-node (vector-copy (node-elements node))
                  (and (node-children node) (vector-copy (node-children node)))
                  (node-size node)))
-
-    (define (node-deep-copy node)
-      (node-let node elements children size
-        (let1 new-children (chain-and children (vector-length _) (make-vector _))
-          (when new-children
-            (let loop ((i 0))
-              (unless (is i > size)
-                (chain (vector-ref children i)
-                       (node-deep-copy _)
-                       (vector-set! new-children i _))
-                (loop (+ i 1)))))
-          (make-node (vector-copy elements) new-children size))))
-
-    (define (btree-copy btree)
-      (make-btree (btree-key-comparator btree)
-                  (btree-max-size btree)
-                  (node-deep-copy (btree-root btree))))
 
     (define (node-split node inserted-left inserted inserted-right <? max-size)
       (let* ((elements (node-elements node))
@@ -486,6 +470,50 @@
 
     (define (btree-fold-right kons knil btree)
       (node-fold-right kons knil (btree-root btree)))
+
+    (define (node-map/monotone fn node)
+      (let ((elements (vector-copy (node-elements node)))
+            (children (chain-and (node-children node) (vector-copy _)))
+            (size (node-size node)))
+        (do ((i 0 (+ i 1))) ((>= i size))
+          (when children
+            (vector-set! children i (node-map/monotone fn (vector-ref children i))))
+          (match (vector-ref elements i)
+            ((k . v)
+              (let1-values (k2 v2) (fn k v)
+                (vector-set! elements i (cons k2 v2))))
+            (else #f)))
+        (when children
+          (vector-set! children size (node-map/monotone fn (vector-ref children size))))
+        (make-node elements children size)))
+
+    (define (node-map/monotone! fn node)
+      (node-let node elements children size
+        (do ((i 0 (+ i 1))) ((>= i size))
+          (when children
+            (node-map/monotone! fn (vector-ref children i)))
+          (match (vector-ref elements i)
+            ((k . v)
+              (let1-values (k2 v2) (fn k v)
+                (vector-set! elements i (cons k2 v2))))
+            (else #f)))
+        (when children
+          (node-map/monotone! fn (vector-ref children size)))))
+
+    (define (btree-map/monotone fn key-comparator btree)
+      (make-btree key-comparator
+                  (btree-max-size btree)
+                  (node-map/monotone fn (btree-root btree))))
+
+    (define (btree-map/monotone! fn key-comparator btree)
+      (set-btree-key-comparator! btree key-comparator)
+      (node-map/monotone! fn (btree-root btree))
+      btree)
+
+    (define (btree-copy btree)
+      (btree-map/monotone (λ(k v) (values k v))
+                          (btree-key-comparator btree)
+                          btree))
 
     (define btree-empty? (compose zero? node-size btree-root))
 

@@ -33,7 +33,7 @@
     mapping-range=! mapping-range<! mapping-range>! mapping-range<=! mapping-range>=!
     mapping-split mapping-split!
     mapping-catenate mapping-catenate!
-    mapping-map/monotone mapping-map/monotone!
+    mapping-map/monotone mapping-map/monotone! mapping-map-values mapping-map-values!
     mapping-fold/reverse
     comparator?)
 
@@ -410,6 +410,18 @@
                                       (btree-set! m k2 v2)))
                       (empty-mapping comparator)
                       mapping))
+
+        (define (mapping-map/monotone proc comparator mapping)
+          (assume (procedure? proc))
+          (assume (comparator? comparator))
+          (assume (mapping? mapping))
+          (btree-map/monotone proc comparator mapping))
+
+        (define (mapping-map/monotone! proc comparator mapping)
+          (assume (procedure? proc))
+          (assume (comparator? comparator))
+          (assume (mapping? mapping))
+          (btree-map/monotone! proc comparator mapping))
 
         (define (mapping-for-each proc mapping)
           (assume (procedure? proc))
@@ -790,8 +802,6 @@
         (define mapping-range<=! mapping-range<=)
         (define mapping-range>=! mapping-range>=)
         (define mapping-split! mapping-split)
-        (define mapping-map/monotone mapping-map)
-        (define mapping-map/monotone! mapping-map)
 
         ;; Comparators
 
@@ -799,6 +809,20 @@
         (define mapping-comparator btree-comparator))))
 
   (begin
+    (define (mapping-map-values proc mapping)
+      (assume (procedure? proc))
+      (mapping-map/monotone
+        (λ(k v) (values k (proc v)))
+        (mapping-key-comparator mapping)
+        mapping))
+
+    (define (mapping-map-values! proc comparator mapping)
+      (assume (procedure? proc))
+      (mapping-map/monotone!
+        (λ(k v) (values k (proc v)))
+        (mapping-key-comparator mapping)
+        mapping))
+
     (define (mapping->block mapping)
       (define color (datum-color-record))
       (if (mapping-empty? mapping)

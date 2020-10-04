@@ -469,6 +469,12 @@
     '((a . 1) (b . 2) (c . 3) (d . 4) (e . 5) (f . 6) (g . 7) (h . 8))
     (mapping->alist (mapping-catenate comparator mapping2 'e 5 mapping5)))
 
+  (test-equal "mapping-fold/reverse"
+    '(1 2 3)
+    (mapping-fold/reverse (lambda (key value acc) (cons value acc))
+                          '()
+                          mapping1))
+
   (test-equal "mapping-map/monotone"
     '((1 . 1) (2 . 4) (3 . 9))
     (mapping->alist
@@ -476,11 +482,12 @@
                             comparator
                             mapping1)))
 
-  (test-equal "mapping-fold/reverse"
-    '(1 2 3)
-    (mapping-fold/reverse (lambda (key value acc) (cons value acc))
-                          '()
-                          mapping1)))
+  (test-equal "mapping-map/monotone!"
+    '((1 . 1) (2 . 4) (3 . 9))
+    (mapping->alist
+      (mapping-map/monotone! (lambda (key value) (values value (* value value)))
+                             comparator
+                             mapping1))))
 
 (test-group "Comparators"
   (define mapping1 (mapping comparator 'a 1 'b 2 'c 3))

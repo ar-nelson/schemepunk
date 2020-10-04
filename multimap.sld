@@ -43,10 +43,7 @@
     (define (multimap-copy mmap)
       (assume (multimap? mmap))
       (make-multimap
-        (mapping-map/monotone!
-          (λ(k v) (values k (set-copy v)))
-          (multimap-key-comparator mmap)
-          (mapping-copy (multimap->mapping mmap)))
+        (mapping-map-values set-copy (multimap->mapping mmap))
         (multimap-value-comparator mmap)))
 
     (define (multimap-ref mmap key)
