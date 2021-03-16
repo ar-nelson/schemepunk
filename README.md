@@ -36,6 +36,7 @@ Schemepunk can also be built as a Chicken egg. Just run `chicken-install`
 - [`(schemepunk command)` - Command-line argument parsing](#schemepunk-command)
 - [`(schemepunk comparator)` - Comparators](#schemepunk-comparator)
 - [`(schemepunk datalog)` - Logic programming (WIP)](#schemepunk-datalog)
+- [`(schemepunk flexvector)` - Flexvectors (dynamic arrays)](#schemepunk-flexvector)
 - [`(schemepunk function)` - Functional programming utilities](#schemepunk-function)
 - [`(schemepunk generator)` - Generators and accumulators](#schemepunk-generator)
 - [`(schemepunk hash-table)` - Hash tables](#schemepunk-hash-table)
@@ -271,6 +272,10 @@ macros, and comparators:
 
 WIP simple Datalog logic programming library. Still unfinished, not much to see
 here. So far, it supports semi-naive evaluation and stratified negation.
+
+### `(schemepunk flexvector)`
+
+Polyfilled alias for [SRFI 214 (Flexvectors)][srfi214]. No additional exports.
 
 ### `(schemepunk function)`
 
@@ -841,6 +846,7 @@ additional procedure:
 | [166][srfi166] | `(schemepunk show)`       | Monadic formatting           |
 | [173][srfi173] | `(schemepunk hook)`       | Hooks                        |
 | [197][srfi197] | `(schemepunk syntax)`     | `chain` and related macros   |
+| [214][srfi214] | `(schemepunk flexvector)` | Flexvectors                  |
 
 These modules are aliases for several common SRFIs and R7RS Large libraries,
 along with implementations of these libraries for Schemes that don't provide
@@ -901,6 +907,7 @@ Schemepunk also includes MIT/BSD-licensed code from the following authors:
 [srfi166]: https://srfi.schemers.org/srfi-166/
 [srfi173]: https://srfi.schemers.org/srfi-173/
 [srfi197]: https://srfi.schemers.org/srfi-197/
+[srfi214]: https://srfi.schemers.org/srfi-214/
 [clojure-threading]: https://clojure.org/guides/threading_macros
 [chibi-app]: http://synthcode.com/scheme/chibi/lib/chibi/app.html
 [chibi-match]: http://synthcode.com/scheme/chibi/lib/chibi/match.html

@@ -20,6 +20,9 @@
    (extension schemepunk.string
      (source "string.sld")
      (component-dependencies schemepunk.syntax schemepunk.list))
+   (extension schemepunk.flexvector
+     (source "flexvector.sld")
+     (component-dependencies schemepunk.syntax schemepunk.list))
    (extension schemepunk.hook
      (source "hook.sld")
      (component-dependencies schemepunk.syntax schemepunk.list))
