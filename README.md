@@ -855,7 +855,7 @@ copied from either the SRFI documents or Chibi Scheme.
 
 ## License
 
-Copyright &copy; 2020 Adam Nelson
+Copyright &copy; 2020-2021 Adam Nelson
 
 Schemepunk is distributed under the [Blue Oak Model License][blue-oak]. It is
 a MIT/BSD-style license, but with [some clarifying improvements][why-blue-oak]
