@@ -693,6 +693,9 @@ and [SRFI 197 (`chain`)][srfi197].
   argument name: `(λ x (+ x 1))` = `(lambda (x) (+ x 1))`. Arguments may contain
   destructuring assigments (see `match`).
 
+    **Caution: `λ` is not substitutable for `lambda` in all situations.**
+    `(lambda x …)` takes any numer of arguments, but `(λ x …)` takes one.
+
 - `chain` is similar to [Clojure threading macros][clojure-threading], but with
   `_` as an explicit argument marker. This macro is fully defined in
   [SRFI 197][srfi197].
