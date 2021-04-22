@@ -15,6 +15,10 @@
   (test "let1"
     (assert-eqv (let1 x 2 (define y 3) (+ x y)) 5))
 
+  (test "if-let"
+    (assert-eqv (if-let x 2 (+ x 3) x) 5)
+    (assert-eqv (if-let x #f (+ x 3) (not x)) #t))
+
   (test "one-of"
     (assert-true ((one-of 1 3 5 7) 5))
     (assert-false ((one-of 1 3 5 7) 2))

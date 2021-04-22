@@ -1,7 +1,7 @@
 (define-library (schemepunk syntax)
   (export λ
           chain chain-and chain-when chain-lambda nest nest-reverse
-          let1 let1-values
+          let1 let1-values if-let let/cc
           inline-defines syntax-symbol-case
           one-of none-of dotimes
 
@@ -356,11 +356,22 @@
 
     (define-syntax let1
       (syntax-rules ()
-        ((let1 name value . body) (let ((name value)) . body))))
+        ((_ name value . body) (let ((name value)) . body))))
 
     (define-syntax let1-values
       (syntax-rules ()
-        ((let1 names value . body) (let-values ((names value)) . body))))
+        ((_ names value . body) (let-values ((names value)) . body))))
+
+    (define-syntax if-let
+      (syntax-rules ()
+        ((_ name value then-case else-case)
+          (let ((name value))
+            (if name then-case else-case)))))
+
+    (define-syntax let/cc
+      (syntax-rules ()
+        ((_ name . body)
+          (call/cc (lambda (name) . body)))))
 
     (define-syntax inline-defines
       (syntax-rules (define define-values)

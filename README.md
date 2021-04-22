@@ -705,8 +705,14 @@ and [SRFI 197 (`chain`)][srfi197].
   y _) (bar _ z))` = `(lambda (x) (chain x (foo y _) (bar _ z)))`. `λ=>` is
   shorthand for `chain-lambda`.
 
-- `(let1 <name> <value> <expressions>…)` is shorthand for `let` with a single
+- `(let1 <name> <value> <body>…)` is shorthand for `let` with a single
   variable.
+
+- `(if-let <name> <value> <then> <else>)` is a version of `if` that assigns the
+  predicate `<value>` to a variable `<name>`.
+
+- `(let/cc <name> <body>…)` is shorthand for
+  `(call/cc (lambda (<name>) <body>…))`.
 
 - `(match <value> (<pattern> <expr>…)…)` is a hygenic pattern-matching macro,
   based on Alex Shinn's `match-simple.scm`, which is itself based on Andrew
@@ -718,7 +724,7 @@ and [SRFI 197 (`chain`)][srfi197].
     does not support the symbol `...` as an ellipsis operator (use `___` or `…`
     instead).
 
-- `(match-let ((<pattern> <value>)…) <expressions>…)` uses the
+- `(match-let ((<pattern> <value>)…) <body>…)` uses the
   pattern-matching syntax from `match` as destructuring assignment.
 
     Related functions `match-let*`, `match-let1`, and `match-letrec` are also
