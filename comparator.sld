@@ -98,7 +98,7 @@
              ((x y) . body))))))
 
   (cond-expand
-    ((and (not chicken) (library (srfi 162)))
+    ((and (not chicken) (not gauche) (library (srfi 162)))
       (import (srfi 162)))
     ((and (not chicken) (library (srfi 114)))
       (import (only (srfi 114)

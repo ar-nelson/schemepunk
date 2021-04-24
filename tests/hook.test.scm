@@ -10,8 +10,8 @@
 
   (test "list->hook, then run"
     (let* ((side-effects '())
-           (put-foo! (λ x (set! side-effects `((foo ,x) ,@side-effects))))
-           (hook (list->hook 1 (list put-foo! put-foo!))))
+           (put-foo! (λ () (λ x (set! side-effects `((foo ,x) ,@side-effects)))))
+           (hook (list->hook 1 (list (put-foo!) (put-foo!)))))
       (hook-run hook 1)
       (assert-equal side-effects '((foo 1) (foo 1)))
       (hook-run hook 2)
