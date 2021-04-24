@@ -247,6 +247,8 @@ macros, and comparators:
 - `number-comparator` is a default comparator for numbers that is more general
   than SRFI 162's `real-comparator`.
 
+- `fixnum-comparator` is a default comparator for fixnums (small integers).
+
 - `(make-sum-comparator <comparators>…)` creates a comparator for the _sum type_
   of the types represented by each comparator in `<comparators>`. For example,
   `(make-sum-comparator boolean-comparator number-comparator string-comparator)`

@@ -27,7 +27,7 @@
   (export comparator-max comparator-min
           comparator-max-in-list comparator-min-in-list
           default-comparator boolean-comparator real-comparator
-          char-comparator char-ci-comparator
+          fixnum-comparator char-comparator char-ci-comparator
           string-comparator string-ci-comparator
           pair-comparator list-comparator vector-comparator
           eq-comparator eqv-comparator equal-comparator)
@@ -96,6 +96,26 @@
            (case-lambda
              ((x) (let ((y 0)) . body))
              ((x y) . body))))))
+
+  (cond-expand
+    ((and (not chicken) (library (srfi 143)))
+      (import (srfi 143))
+      (begin
+        (define fixnum-comparator
+          (make-comparator fixnum? fx=? fx<? (hash-lambda (x) x)))))
+    (gerbil
+      (import (std srfi 143))
+      (begin
+        (define fixnum-comparator
+          (make-comparator fixnum? fx=? fx<? (hash-lambda (x) x)))))
+    (else
+      (begin
+        (define fixnum-comparator
+          (make-comparator
+            (λ x (and (number? x) (exact? x) (integer? x)))
+            =
+            <
+            (hash-lambda (x) x))))))
 
   (cond-expand
     ((and (not chicken) (not gauche) (library (srfi 162)))
